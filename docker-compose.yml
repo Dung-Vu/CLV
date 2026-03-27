@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    container_name: clv-app
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:-130501}@db:5432/clv"
+      AI_BASE_URL: "${AI_BASE_URL}"
+      AI_API_KEY: "${AI_API_KEY}"
+      AI_MODEL: "${AI_MODEL:-qwen3.5-plus}"
+      AI_MAX_TOKENS: "${AI_MAX_TOKENS:-1000}"
+      NODE_ENV: "production"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      APP_MODE: "${APP_MODE:-clean}"
+      AUTO_CLAIM_ENABLED: "${AUTO_CLAIM_ENABLED:-false}"
+      EXECUTION_DRY_RUN: "${EXECUTION_DRY_RUN:-true}"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: clv-db
+    environment:
+      POSTGRES_DB: clv
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-130501}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"   # 5433 to avoid conflict with local postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clv"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

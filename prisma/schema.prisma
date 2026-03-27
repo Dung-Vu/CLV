@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Freebie {
+  id              String     @id @default(cuid())
+  title           String
+  source          String
+  url             String     @unique
+  description     String?
+  status          String     @default("raw") // raw | analyzed | claimed | ignored | expired | analysis_error
+  category        String     @default("unknown") // ai-tool | saas | cloud | voucher | other
+  valueUsd        Float?
+  expiry          DateTime?
+  eligibleVn      Boolean    @default(false)
+  riskLevel       String     @default("unknown") // low | medium | high | unknown
+  score           Float      @default(0)
+  tier            String? // A | B | C
+  summaryVi       String?
+  stepsJson       String? // JSON array string
+  cardRequired    Boolean    @default(false)
+  kycRequired     Boolean    @default(false)
+  frictionLevel   String     @default("unknown") // low | medium | high | unknown
+  analysisVersion String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  claimLogs       ClaimLog[]
+
+  @@index([status])
+  @@index([score])
+  @@index([tier])
+  @@index([createdAt])
+  @@index([category])
+  @@index([eligibleVn])
+  @@index([status, score])
+  @@index([status, tier])
+}
+
+model UserPrefs {
+  id                    String   @id @default(cuid())
+  minValueUsd           Float    @default(20)
+  allowedCategories     String[] @default([])
+  blockedCategories     String[] @default([])
+  maxRiskLevel          String   @default("medium")
+  autoClaimEnabled      Boolean  @default(false)
+  autoClaimMinScore     Float    @default(80)
+  allowedExecutionTiers String[] @default(["A"])
+  mode                  String   @default("clean") // clean | grey
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model ClaimLog {
+  id          String   @id @default(cuid())
+  freebieId   String
+  freebie     Freebie  @relation(fields: [freebieId], references: [id])
+  status      String // success | failed | skipped | dry_run
+  mode        String   @default("manual") // manual | semi-auto | auto
+  note        String?
+  evidenceUrl String?
+  errorMsg    String?
+  executedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([freebieId])
+  @@index([createdAt])
+}
+
+model AgentRunLog {
+  id        String   @id @default(cuid())
+  agentName String
+  actions   String[] // array of action strings logged during the run
+  runAt     DateTime @default(now())
+
+  @@index([agentName])
+  @@index([runAt])
+}
+
+model SourceConfig {
+  id         String   @id @default(cuid())
+  name       String
+  kind       String // rss | html | official | reddit | twitter | manual
+  url        String
+  enabled    Boolean  @default(true)
+  priority   String   @default("medium") // high | medium | low
+  trustLevel String   @default("medium") // high | medium | low
+  tags       String[] @default([])
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
