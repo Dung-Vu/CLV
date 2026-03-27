@@ -1,139 +1,126 @@
 # CLV — AI-Powered Global Freebies Hunter
 
-> **Tự động săn, phân tích và claim các chương trình free, trial, promo từ khắp nơi trên thế giới.**
+> **Personal AI agent giúp bạn tự động săn, phân tích và ưu tiên các chương trình free / trial / promo giá trị cao trên toàn thế giới (ưu tiên AI tools & SaaS), chạy self-host cho 1 người dùng tại Việt Nam.**
 
 ---
 
-## 🎯 Mục Tiêu
+## 1. CLV là gì?
 
-CLV là công cụ cá nhân giúp tự động:
-- **Phát hiện** các chương trình free/promo AI tools, SaaS trials, referral bonuses toàn cầu
-- **Phân tích** bằng AI: giá trị thực, điều kiện nhận, rủi ro, độ ưu tiên
-- **Thông báo** ngay khi có deal ngon phù hợp
-- **Scale** dễ dàng sang nhiều lĩnh vực (voucher đồ ăn, ecommerce, v.v.)
+CLV là một **dự án cá nhân** biến ý tưởng "AI đi săn freebies cho mình" thành một hệ thống agentic hoàn chỉnh:
+- Tự động **thu thập** thông tin từ các nguồn như RSS, blog tổng hợp, Reddit, ProductHunt, v.v.
+- Dùng LLM để **chuẩn hoá & phân tích** từng deal: giá trị ước tính, hạn dùng, rủi ro, khả năng claim được từ Việt Nam.
+- **Chấm điểm & xếp hạng** dựa trên cấu hình của riêng bạn (scoring & policy engine).
+- Cung cấp **dashboard** để bạn xem, lọc, đánh dấu claimed/ignored và về sau có thể **semi-auto thực thi** một số deal Tier A an toàn.
 
----
-
-## 🧠 Kiến Trúc Hệ Thống
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   CLV SYSTEM                        │
-├─────────────┬───────────────┬───────────────────────┤
-│   SCANNER   │  AI ANALYZER  │      DASHBOARD        │
-│  (Cron Job) │  (LLM Engine) │    (Next.js 15)       │
-└──────┬──────┴───────┬───────┴──────────┬────────────┘
-       │              │                  │
-       ▼              ▼                  ▼
-  RSS/Twitter    Classify &         View + Filter
-  Reddit/PH      Score Deal         Claimed Log
-  Telegram       VN-eligible?       Expiry Alert
-```
+**Trạng thái mục tiêu (master project):** CLV chạy 24/7 trên VPS của bạn như một AI agent riêng, mỗi ngày tổng hợp những deal đáng quan tâm nhất, bạn chỉ cần mở dashboard để quyết định có claim hay không.
 
 ---
 
-## 🔍 Nguồn Dữ Liệu
+## 2. Ảnh tổng thể kiến trúc
 
-| Nguồn | Loại | Ví Dụ |
-|-------|------|-------|
-| RSS Feeds | Freebies toàn cầu | FreebieShark, Hip2Save |
-| Reddit API | Community deals | r/Freebies, r/deals |
-| ProductHunt | AI/SaaS promos | Launch day free tiers |
-| Twitter/X | Giveaways realtime | #AItools #free |
-| Telegram | VN-specific | Group Săn Sale VN |
-| Manual seeds | High-value targets | Perplexity Pro, Gemini Ultra |
+Ở mức high-level, CLV gồm các tầng chính:
 
----
+- **Ingestion (Collectors)** – đọc `SOURCES` config, kéo dữ liệu từ RSS, blog, API, social.
+- **Analyzer (LLM)** – chuẩn hoá từng freebie thành JSON structured (value, expiry, risk, eligible_vn, category, score gốc…).
+- **Scoring & Policy** – áp dụng rule của bạn để tính `score` 0–100 và quyết định Tier (A/B/C) + action recommendation.
+- **Dashboard** – UI Next.js để xem & thao tác với freebies, tạo vòng lặp feedback (ClaimLog, note…).
+- **Execution (Semi-auto)** – dùng browser automation cho một số deal Tier A (an toàn, không cần card/KYC).
+- **Agents** – Supervisor/Research/Execution agents điều phối các pipeline trên theo lịch/sự kiện.
 
-## ⚙️ Tech Stack
-
-| Layer | Tech |
-|-------|------|
-| Frontend | Next.js 15 (App Router, TypeScript) |
-| Backend | Next.js API Routes + Node-cron |
-| Database | PostgreSQL + Prisma ORM |
-| AI Engine | Ollama (local LLM) / Groq API |
-| Scraping | Puppeteer + Cheerio |
-| Auth | iron-session |
-| Deploy | Self-hosted VPS + PM2 + Nginx |
+Chi tiết từng layer và data flow end-to-end được mô tả kỹ hơn trong:
+- `docs/long-term-strategy.md`
+- `docs/master/system-architecture-deep-dive.md`
 
 ---
 
-## 🗄️ Database Schema (Core)
+## 3. Các chức năng chính
 
-```prisma
-model Freebie {
-  id          String   @id @default(cuid())
-  title       String
-  source      String   // reddit, rss, twitter...
-  value_usd   Float?   // giá trị ước tính
-  expiry      DateTime?
-  claim_url   String
-  steps       String?  // hướng dẫn claim
-  eligible_vn Boolean  @default(false)
-  risk_level  String   // low / medium / high
-  score       Float    // AI ranking score
-  status      String   @default("new") // new/claimed/expired
-  category    String   // ai-tool / saas / food / referral
-  created_at  DateTime @default(now())
-}
+- **Freebies Intelligence**  
+  Thu thập & phân tích deal từ nhiều nguồn (AI tools, SaaS, cloud credits, v.v.), gắn nhãn và xếp hạng theo cấu hình cá nhân.
 
-model UserPrefs {
-  id            String   @id @default(cuid())
-  min_value_usd Float    @default(20)
-  categories    String[] // ["ai-tool", "saas"]
-  auto_claim    Boolean  @default(false)
-}
-```
+- **Personal Scoring Engine**  
+  Cho phép bạn định nghĩa mức độ ưu tiên: value tối thiểu, loại deal ưa thích (ai-tool/saas/cloud/khác), mức risk chấp nhận được.
+
+- **Dashboard cho 1 người dùng**  
+  Giao diện để xem danh sách freebies, lọc theo score/status/category, xem chi tiết, và đánh dấu claimed/ignored/pinned.
+
+- **Semi-auto Execution (Tier A)**  
+  Hỗ trợ chạy tự động một số thao tác lặp lại (điền form đơn giản) trên các deal an toàn, nhưng vẫn giữ bạn là người quyết định cuối.
+
+- **Multi-agent Orchestration**  
+  Tách vai trò thành nhiều agent (Supervisor, Research, Execution) để dễ mở rộng, tuning và theo dõi hành vi hệ thống.
 
 ---
 
-## 🤖 AI Analyzer Prompt (Core Logic)
+## 4. Roadmap triển khai (10 Phase)
 
-Mỗi freebie mới được LLM phân tích theo template:
+Dự án được chia thành 10 phase rõ ràng, mỗi phase có file riêng trong `docs/phases/`:
 
-```
-Analyze this promotion:
-Title: {title}
-Description: {description}
+1. **Phase 1 – Tầm nhìn & Phạm vi**  
+   Chuẩn hoá tech stack, cấu trúc repo, tooling, env.
 
-Return JSON:
-{
-  "value_usd": number,
-  "expiry": "YYYY-MM-DD or null",
-  "eligible_vn": boolean,
-  "risk_level": "low|medium|high",
-  "claim_steps": ["step1", "step2"],
-  "score": 0-100,
-  "summary_vi": "mô tả ngắn tiếng Việt"
-}
-```
+2. **Phase 2 – Nghiên cứu nguồn freebies**  
+   Tạo `docs/sources.md` và `src/config/sources.ts` – bản đồ nguồn dữ liệu.
 
----
+3. **Phase 3 – Kiến trúc & schema dữ liệu**  
+   Thiết kế module layout và `schema.prisma` (Freebie, UserPrefs, ClaimLog).
 
-## 📦 Roadmap
+4. **Phase 4 – MVP Ingestion**  
+   Implement collectors đầu tiên, chạy `ingest:once` để đổ dữ liệu `raw` vào DB.
 
-### Phase 1 — MVP Scanner (Tuần 1)
-- [ ] Setup Next.js 15 + Prisma + Postgres
-- [ ] RSS/Reddit scanner cron job
-- [ ] AI analyzer (Groq free tier)
-- [ ] Dashboard cơ bản: list + filter
+5. **Phase 5 – MVP Analyzer (LLM)**  
+   Dùng LLM để chuẩn hoá & phân tích freebies, chuyển từ `raw` sang `analyzed`.
 
-### Phase 2 — Auto Claim (Tuần 2)
-- [ ] Puppeteer auto-signup (burner email)
-- [ ] Referral chain automation
-- [ ] Proxy rotation support
+6. **Phase 6 – Dashboard & Feedback loop**  
+   Xây UI Next.js để xem, lọc, update trạng thái và log feedback.
 
-### Phase 3 — Scale (Tuần 3+)
-- [ ] Thêm category: food vouchers (Shopee, Grab)
-- [ ] Multi-country targeting
-- [ ] AI personalization theo lịch sử claim
+7. **Phase 7 – Scoring & Policy Engine**  
+   Tính `score`, quyết định Tier & action recommendation bằng config riêng.
+
+8. **Phase 8 – Semi-auto Execution (Tier A)**  
+   Thêm executor với browser automation cho deal an toàn.
+
+9. **Phase 9 – Multi-agent CLV**  
+   Định nghĩa các agent, runner, và scheduling cơ bản.
+
+10. **Phase 10 – Mở rộng & tối ưu dài hạn**  
+    Thêm vertical mới (food/ecommerce), tối ưu hiệu năng, logging, metrics.
+
+Chi tiết từng phase: xem thư mục `docs/phases/`.
 
 ---
 
-## ⚠️ Disclaimer
+## 5. Tài liệu "master" khi dự án hoàn thiện
 
-Dự án cá nhân, chỉ dùng cho mục đích cá nhân. Tuân thủ ToS từng platform. Không dùng cho mục đích thương mại.
+Khi CLV tiến gần tới trạng thái ổn định, các tài liệu trong `docs/master/` sẽ mô tả dự án như một "master project":
+
+- `master-overview.md` – tóm tắt mục tiêu, chức năng, kiến trúc.
+- `system-architecture-deep-dive.md` – phân tích chi tiết kiến trúc & data flow.
+- `agent-design-and-workflows.md` – mô tả đầy đủ agent & workflow.
+- `operations-runbook.md` – hướng dẫn vận hành, deploy, xử lý sự cố.
+- `security-privacy-compliance.md` – nguyên tắc bảo mật & riêng tư.
+- `extension-experiment-playbook.md` – cách mở rộng & chạy experiments.
+
+---
+
+## 6. Tech stack (dự kiến)
+
+- **Frontend / Backend**: Next.js 15 (App Router, TypeScript)
+- **Database**: PostgreSQL + Prisma ORM
+- **AI Layer**: Groq/OpenAI (ban đầu), có thể chuyển sang Ollama/local về sau
+- **Ingestion & Automation**: Node-cron, RSS/HTTP fetchers, Puppeteer/Playwright
+- **Auth & Session**: iron-session (nếu cần login basic cho dashboard)
+- **Deploy**: Self-hosted VPS (PM2 + Nginx)
+
+Chi tiết implementation sẽ dần được bổ sung khi các phase được triển khai.
+
+---
+
+## 7. Trạng thái & lưu ý
+
+- Đây là **dự án cá nhân** phục vụ chính bạn, không phải sản phẩm thương mại.
+- Mọi hành động auto/semi-auto phải tôn trọng ToS của nền tảng bên ngoài – bạn chịu trách nhiệm về cách sử dụng.
+- Repo hiện tập trung vào **chiến lược & kiến trúc**; phần code sẽ được triển khai dần theo 10 phase.
 
 ---
 
