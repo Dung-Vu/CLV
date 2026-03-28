@@ -6,6 +6,7 @@ export interface FreebieFilters {
   category?: DealCategory | string;
   tier?: DealTier;
   search?: string;
+  sort?: string;
   page?: number;
   pageSize?: number;
 }

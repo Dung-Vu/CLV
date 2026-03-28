@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock prisma
 vi.mock('@/lib/db', () => ({
@@ -35,8 +35,22 @@ vi.mock('playwright', () => ({
   },
 }));
 
+import { env } from '@/lib/env';
 import { prisma } from '@/lib/db';
 import { getAutoCandidates, executeFreebie } from '@/modules/execution/execution.service';
+
+// Helpers to temporarily override env values
+function withEnv(overrides: Partial<typeof env>, fn: () => Promise<void>) {
+  return async () => {
+    const saved = { ...env } as Record<string, unknown>;
+    Object.assign(env, overrides);
+    try {
+      await fn();
+    } finally {
+      Object.assign(env, saved);
+    }
+  };
+}
 
 const mockFreebieA = {
   id: 'exec-001',
@@ -81,7 +95,7 @@ describe('getAutoCandidates', () => {
 
     const result = await getAutoCandidates();
 
-    // Only Tier A (low risk, no card/KYC, eligible, score >= 70) should pass policy check
+    // mockFreebieB has cardRequired=true → Tier B → filtered out
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('exec-001');
   });
@@ -99,6 +113,8 @@ describe('executeFreebie', () => {
     vi.clearAllMocks();
   });
 
+  // ── Basic flow ─────────────────────────────────────────────────────────
+
   it('returns dry_run result when EXECUTION_DRY_RUN=true (default)', async () => {
     vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieA as never);
     vi.mocked(prisma.claimLog.create).mockResolvedValue({} as never);
@@ -115,15 +131,47 @@ describe('executeFreebie', () => {
     await expect(executeFreebie('missing-id', 'dry_run')).rejects.toThrow('Freebie not found');
   });
 
-  it('throws when freebie is not an auto candidate (Tier B)', async () => {
+  // ── Tier A hard gate ───────────────────────────────────────────────────
+
+  it('throws when freebie is not Tier A (Tier B due to cardRequired)', async () => {
     vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieB as never);
 
-    await expect(executeFreebie('exec-002', 'dry_run')).rejects.toThrow(
-      'not eligible for execution',
-    );
+    await expect(executeFreebie('exec-002', 'dry_run')).rejects.toThrow('not Tier A');
   });
 
-  it('writes ClaimLog after dry-run execution', async () => {
+  it('throws with tier information in the message', async () => {
+    vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieB as never);
+
+    await expect(executeFreebie('exec-002', 'dry_run')).rejects.toThrow(/tier=B/);
+  });
+
+  // ── Panic switch ───────────────────────────────────────────────────────
+
+  it(
+    'throws when AUTO_CLAIM_ENABLED=false and requesting semi_auto (panic switch)',
+    withEnv({ AUTO_CLAIM_ENABLED: false, EXECUTION_DRY_RUN: false }, async () => {
+      // panic switch fires before DB load — no need to mock findUnique
+      await expect(executeFreebie('exec-001', 'semi_auto')).rejects.toThrow(
+        'Execution blocked',
+      );
+    }),
+  );
+
+  it(
+    'allows dry_run even when AUTO_CLAIM_ENABLED=false (dry_run has no side effects)',
+    withEnv({ AUTO_CLAIM_ENABLED: false, EXECUTION_DRY_RUN: true }, async () => {
+      vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieA as never);
+      vi.mocked(prisma.claimLog.create).mockResolvedValue({} as never);
+
+      const result = await executeFreebie('exec-001', 'semi_auto');
+      // EXECUTION_DRY_RUN=true converts semi_auto → dry_run, so it proceeds safely
+      expect(result.success).toBe(true);
+    }),
+  );
+
+  // ── ClaimLog ───────────────────────────────────────────────────────────
+
+  it('writes ClaimLog after dry-run with status, mode, startedAt, finishedAt', async () => {
     vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieA as never);
     vi.mocked(prisma.claimLog.create).mockResolvedValue({} as never);
 
@@ -135,8 +183,45 @@ describe('executeFreebie', () => {
           freebieId: 'exec-001',
           status: 'success',
           mode: 'dry_run',
+          startedAt: expect.any(Date),
+          finishedAt: expect.any(Date),
         }),
       }),
     );
   });
+
+  // ── Grey mode ─────────────────────────────────────────────────────────
+
+  it(
+    'includes [app_mode=grey] prefix in ClaimLog note when APP_MODE=grey',
+    withEnv({ APP_MODE: 'grey', AUTO_CLAIM_ENABLED: false, EXECUTION_DRY_RUN: true }, async () => {
+      vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieA as never);
+      vi.mocked(prisma.claimLog.create).mockResolvedValue({} as never);
+
+      await executeFreebie('exec-001', 'dry_run');
+
+      expect(prisma.claimLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            note: expect.stringContaining('[app_mode=grey]'),
+          }),
+        }),
+      );
+    }),
+  );
+
+  it(
+    'does NOT include grey prefix in ClaimLog note when APP_MODE=clean',
+    withEnv({ APP_MODE: 'clean', AUTO_CLAIM_ENABLED: false, EXECUTION_DRY_RUN: true }, async () => {
+      vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebieA as never);
+      vi.mocked(prisma.claimLog.create).mockResolvedValue({} as never);
+
+      await executeFreebie('exec-001', 'dry_run');
+
+      const callData = vi.mocked(prisma.claimLog.create).mock.calls[0][0] as {
+        data: { note: string };
+      };
+      expect(callData.data.note).not.toContain('[app_mode=grey]');
+    }),
+  );
 });

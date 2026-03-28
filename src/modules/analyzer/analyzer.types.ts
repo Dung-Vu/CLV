@@ -21,6 +21,7 @@ export const analyzerOutputSchema = z.object({
   kyc_required: z.boolean(),
   friction_level: z.enum(['low', 'medium', 'high', 'unknown']),
   tier_hint: z.enum(['A', 'B', 'C']),
+  is_deal: z.boolean(),
 });
 
 export type AnalyzerOutput = z.infer<typeof analyzerOutputSchema>;

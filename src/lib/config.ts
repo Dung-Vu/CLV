@@ -14,4 +14,9 @@ export const config = {
     autoClaimEnabled: env.AUTO_CLAIM_ENABLED,
     executionDryRun: env.EXECUTION_DRY_RUN,
   },
+  agents: {
+    supervisorEnabled: env.AGENT_SUPERVISOR_ENABLED,
+    researchEnabled: env.AGENT_RESEARCH_ENABLED,
+    executionEnabled: env.AGENT_EXECUTION_ENABLED,
+  },
 } as const;

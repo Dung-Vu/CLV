@@ -1,75 +1,69 @@
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { env } from '@/lib/env';
 import { sendPipelineAlert } from '@/lib/telegram';
+import { getDashboardStats, getEstimatedClaimableValue } from '@/modules/freebies/freebies.service';
 import type { Agent, AgentContext, AgentResult } from './agent.types';
 
 /**
- * SupervisorAgent — reads daily stats from the DB and produces a
- * concise summary + recommendations (priority boosts, frequency hints).
+ * SupervisorAgent — reads daily stats and produces a concise summary +
+ * recommendations (priority boosts, frequency hints).
  *
- * It does NOT trigger any pipeline itself — that is ExecutionAgent's job.
- * It acts as the "morning briefing" step that shapes what the other agents do.
+ * Orchestration only: no direct DB access, no Playwright, no LLM calls.
+ * Delegates data reads to freebies service functions.
  */
 const supervisorAgent: Agent = {
   name: 'SupervisorAgent',
+  get enabled() { return env.AGENT_SUPERVISOR_ENABLED; },
 
   async run(_ctx: AgentContext): Promise<AgentResult> {
     const actions: string[] = [];
+    const log = (msg: string) => { actions.push(msg); };
 
-    logger.info('[SupervisorAgent] run started');
+    logger.info('run started', { agent: 'SupervisorAgent' });
 
-    // 1. Gather stats
-    const [statusCounts, totalValue, recentErrors] = await Promise.all([
-      prisma.freebie.groupBy({ by: ['status'], _count: { _all: true } }),
-      prisma.freebie.aggregate({
-        where: { status: 'analyzed', eligibleVn: true },
-        _sum: { valueUsd: true },
-      }),
-      prisma.freebie.count({ where: { status: 'analysis_error' } }),
+    // 1. Gather stats via service layer
+    const [byStatus, estimatedValue] = await Promise.all([
+      getDashboardStats(),
+      getEstimatedClaimableValue(),
     ]);
 
-    const byStatus = statusCounts.reduce<Record<string, number>>((acc, r) => {
-      acc[r.status] = r._count._all;
-      return acc;
-    }, {});
+    const recentErrors = byStatus['analysis_error'] ?? 0;
 
-    actions.push(
+    log(
       `Stats: raw=${byStatus['raw'] ?? 0} analyzed=${byStatus['analyzed'] ?? 0} ` +
         `claimed=${byStatus['claimed'] ?? 0} ignored=${byStatus['ignored'] ?? 0} ` +
         `errors=${recentErrors}`,
     );
+    log(`Estimated claimable value: $${estimatedValue.toFixed(0)}`);
 
-    const estimatedValue = totalValue._sum.valueUsd ?? 0;
-    actions.push(`Estimated claimable value: $${estimatedValue.toFixed(0)}`);
-
-    // 2. Simple recommendations
+    // 2. Simple rule-based recommendations
     const rawCount = byStatus['raw'] ?? 0;
     const analyzedCount = byStatus['analyzed'] ?? 0;
 
     if (rawCount > 20) {
-      actions.push('RECOMMENDATION: High raw backlog — suggest increasing analyzer batch size');
+      log('RECOMMENDATION: High raw backlog — suggest increasing analyzer batch size');
     } else if (rawCount === 0 && analyzedCount === 0) {
-      actions.push('RECOMMENDATION: Pipeline appears idle — suggest running ingestion');
+      log('RECOMMENDATION: Pipeline appears idle — suggest running ingestion');
     } else {
-      actions.push('RECOMMENDATION: Pipeline looks healthy');
+      log('RECOMMENDATION: Pipeline looks healthy');
     }
 
     if (recentErrors > 5) {
-      actions.push(
+      log(
         `ALERT: ${recentErrors} analysis errors detected — consider checking LLM quota or prompt`,
       );
     }
 
-    // Send Telegram alert if anomalies exist
+    // 3. Telegram alert for anomalies
     if (recentErrors > 5 || rawCount > 50) {
       await sendPipelineAlert({
         errorCount: recentErrors,
         rawBacklog: rawCount,
-        estimatedValue: estimatedValue,
+        estimatedValue,
       });
     }
 
-    logger.info('[SupervisorAgent] run finished', { actions });
+    logger.info('run finished', { agent: 'SupervisorAgent', actionsCount: actions.length });
     return { name: 'SupervisorAgent', actions };
   },
 };

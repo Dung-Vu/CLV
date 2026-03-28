@@ -14,6 +14,9 @@ vi.mock('@/lib/env', () => ({
     APP_MODE: 'clean',
     AUTO_CLAIM_ENABLED: false,
     EXECUTION_DRY_RUN: true,
+    AGENT_SUPERVISOR_ENABLED: true,
+    AGENT_RESEARCH_ENABLED: true,
+    AGENT_EXECUTION_ENABLED: true,
   },
 }));
 

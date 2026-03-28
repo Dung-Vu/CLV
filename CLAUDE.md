@@ -18,15 +18,15 @@ CLV là một **AI agent cá nhân, self-hosted** để săn freebies / trials /
 
 ## 2. Tech stack
 
-| Layer | Tech |
-|---|---|
-| Framework | Next.js 14+ App Router + TypeScript strict |
-| ORM | Prisma + PostgreSQL |
-| LLM | OpenAI SDK (abstracted qua `LlmClient` interface) |
-| Validation | Zod |
-| Testing | Vitest |
-| Automation | Playwright (Phase 8+, chưa cần ngay) |
-| Scheduling | node-cron hoặc systemd/PM2 external |
+| Layer      | Tech                                              |
+| ---------- | ------------------------------------------------- |
+| Framework  | Next.js 14+ App Router + TypeScript strict        |
+| ORM        | Prisma + PostgreSQL                               |
+| LLM        | OpenAI SDK (abstracted qua `LlmClient` interface) |
+| Validation | Zod                                               |
+| Testing    | Vitest                                            |
+| Automation | Playwright (Phase 8+, chưa cần ngay)              |
+| Scheduling | node-cron hoặc systemd/PM2 external               |
 
 ---
 
@@ -64,32 +64,38 @@ tests/
 ## 4. Conventions bắt buộc
 
 ### TypeScript
+
 - `strict: true` — không dùng `any`, không cast tùy tiện.
 - Export type riêng: `export type { Freebie }` không lẫn với runtime exports.
 - Dùng `interface` cho object shapes, `type` cho unions/intersections.
 
 ### Error handling
+
 - Trong service/module: `throw new Error('message rõ ràng')` — không throw string.
 - Trong job/script entrypoint: wrap bằng try/catch, log error rồi `process.exit(1)`.
 - Không bao giờ swallow error bằng empty catch `{}`.
 
 ### Logging
+
 - Luôn dùng `logger` từ `lib/logger.ts` — **không dùng `console.log` trong production code**.
 - Log format: `logger.info('message', { context object })`.
 - Các điểm bắt buộc log: bắt đầu job, kết thúc job, lỗi, số record xử lý.
 
 ### Database
+
 - Chỉ import `prisma` từ `lib/db.ts`.
 - Không gọi `prisma.*` trực tiếp từ route handlers hay job entrypoints — phải qua `modules/`.
 - Không dùng raw SQL trừ khi có lý do rõ ràng và comment giải thích.
 
 ### LLM
+
 - Không gọi OpenAI SDK trực tiếp từ module code — phải qua `LlmClient` interface ở `lib/llm.ts`.
 - Luôn validate LLM output bằng Zod trước khi dùng.
 - Luôn lưu `analysisVersion` khi lưu kết quả analyzer.
 - Có retry + backoff khi LLM call thất bại.
 
 ### API Routes (Next.js)
+
 - Không chứa business logic trong route handler — chỉ gọi module function.
 - Trả về lỗi theo format: `{ error: string, code?: string }`.
 - Luôn validate request body bằng Zod.
@@ -102,10 +108,11 @@ tests/
 # Database
 DATABASE_URL="postgresql://user:pass@localhost:5432/clv"
 
-# LLM
-OPENAI_API_KEY="sk-..."
-OPENAI_MODEL="gpt-4o-mini"       # model mặc định cho analyzer
-OPENAI_MAX_TOKENS=1000
+# AI — OpenAI-compatible API (Bailian/Qwen, OpenAI, Groq, v.v.)
+AI_BASE_URL="https://api.openai.com/v1"
+AI_API_KEY="sk-..."
+AI_MODEL="gpt-4o-mini"            # model mặc định cho analyzer
+AI_MAX_TOKENS=1000
 
 # App
 NODE_ENV="development"
@@ -115,6 +122,11 @@ APP_MODE="clean"                  # clean | grey (xem tier-policy.md)
 # Feature flags
 AUTO_CLAIM_ENABLED="false"        # tắt mặc định
 EXECUTION_DRY_RUN="true"         # bật mặc định
+CLAIM_EMAIL="your-claim-email@example.com"
+
+# Telegram alerts (optional — để trống để tắt)
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_CHAT_ID=""
 ```
 
 Validate tất cả env vars khi app khởi động qua `lib/env.ts` với Zod. Nếu thiếu biến bắt buộc → throw ngay, không để app chạy ngầm với config sai.
@@ -134,15 +146,15 @@ Validate tất cả env vars khi app khởi động qua `lib/env.ts` với Zod. 
 
 ## 7. Tài liệu cần đọc trước khi implement
 
-| Implement gì | Đọc trước |
-|---|---|
-| Bất kỳ thứ gì | `docs/master/master-overview.md` |
-| DB schema / migration | `docs/master/system-architecture-deep-dive.md` |
-| Ingestion module | `docs/phases/phase-04-mvp-ingestion.md` + `docs/sources.md` |
-| Analyzer module | `docs/phases/phase-05-mvp-analyzer.md` + `docs/prompt-templates/analyzer-v1.md` |
-| Scoring / Policy | `docs/phases/phase-07-scoring-policy.md` + `docs/tier-policy.md` |
-| Semi-auto execution | `docs/phases/phase-08-semi-auto-execution.md` |
-| Agent orchestration | `docs/phases/phase-09-multi-agent.md` |
+| Implement gì          | Đọc trước                                                                       |
+| --------------------- | ------------------------------------------------------------------------------- |
+| Bất kỳ thứ gì         | `docs/master/master-overview.md`                                                |
+| DB schema / migration | `docs/master/system-architecture-deep-dive.md`                                  |
+| Ingestion module      | `docs/phases/phase-04-mvp-ingestion.md` + `docs/sources.md`                     |
+| Analyzer module       | `docs/phases/phase-05-mvp-analyzer.md` + `docs/prompt-templates/analyzer-v1.md` |
+| Scoring / Policy      | `docs/phases/phase-07-scoring-policy.md` + `docs/tier-policy.md`                |
+| Semi-auto execution   | `docs/phases/phase-08-semi-auto-execution.md`                                   |
+| Agent orchestration   | `docs/phases/phase-09-multi-agent.md`                                           |
 
 ---
 

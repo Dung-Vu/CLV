@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { freebiesRepository } from '@/modules/freebies/freebies.repository';
 import { computeScore } from './scoring.service';
 
 /**
@@ -12,11 +12,7 @@ import { computeScore } from './scoring.service';
 export async function rescoreAnalyzedFreebies(limit = 50): Promise<{ updated: number }> {
   logger.info('rescoreAnalyzedFreebies started', { limit });
 
-  const freebies = await prisma.freebie.findMany({
-    where: { status: 'analyzed' },
-    take: limit,
-    orderBy: { updatedAt: 'asc' },
-  });
+  const freebies = await freebiesRepository.findForRescore(limit);
 
   let updated = 0;
 
@@ -32,10 +28,7 @@ export async function rescoreAnalyzedFreebies(limit = 50): Promise<{ updated: nu
       frictionLevel: f.frictionLevel as 'low' | 'medium' | 'high' | 'unknown',
     });
 
-    await prisma.freebie.update({
-      where: { id: f.id },
-      data: { score: result.score },
-    });
+    await freebiesRepository.updateScore(f.id, result.score);
 
     updated++;
   }

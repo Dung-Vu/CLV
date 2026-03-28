@@ -38,7 +38,7 @@ export const freebiesRepository = {
   },
 
   async findMany(filters: FreebieFilters): Promise<FreebieListResult> {
-    const { status, minScore, category, tier, search, page = 1, pageSize = 20 } = filters;
+    const { status, minScore, category, tier, search, sort = 'score', page = 1, pageSize = 20 } = filters;
     const skip = (page - 1) * pageSize;
 
     const where = {
@@ -62,7 +62,7 @@ export const freebiesRepository = {
         where,
         skip,
         take: pageSize,
-        orderBy: { score: 'desc' },
+        orderBy: { [sort]: 'desc' },
       }),
       prisma.freebie.count({ where }),
     ]);
@@ -107,6 +107,36 @@ export const freebiesRepository = {
       },
       orderBy: { score: 'desc' },
       take: limit,
+    });
+  },
+
+  async findForRescore(limit = 50) {
+    return prisma.freebie.findMany({
+      where: { status: 'analyzed' },
+      take: limit,
+      orderBy: { updatedAt: 'asc' },
+    });
+  },
+
+  async updateScore(id: string, score: number) {
+    return prisma.freebie.update({
+      where: { id },
+      data: { score },
+    });
+  },
+
+  async countByCategory() {
+    return prisma.freebie.groupBy({
+      by: ['category'],
+      _count: { _all: true },
+    });
+  },
+
+  async getEstimatedClaimableValue() {
+    return prisma.freebie.aggregate({
+      where: { status: 'analyzed', eligibleVn: true },
+      _sum: { valueUsd: true },
+      _count: { _all: true },
     });
   },
 };

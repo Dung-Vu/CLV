@@ -3,6 +3,8 @@
  * Job: Run analyzer once — process pending raw freebies with LLM.
  * Usage: npm run analyzer:once
  */
+import '@/lib/env'; // validate env vars at startup — throws immediately if misconfigured
+
 import { analyzePendingFreebies } from '@/modules/analyzer/analyzer.service';
 import { logger } from '@/lib/logger';
 

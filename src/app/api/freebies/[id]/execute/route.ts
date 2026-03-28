@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   // Guard: never allow real execution when AUTO_CLAIM_ENABLED=false
   if (!env.AUTO_CLAIM_ENABLED && !env.EXECUTION_DRY_RUN) {
     return NextResponse.json(
-      { error: 'Execution is disabled. Set AUTO_CLAIM_ENABLED=true to enable.' },
+      { error: 'Execution is disabled. Set AUTO_CLAIM_ENABLED=true to enable.', code: 'EXECUTION_DISABLED' },
       { status: 403 },
     );
   }

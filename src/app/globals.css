@@ -1,1 +1,109 @@
 @import 'tailwindcss';
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+
+  --color-accent-green: var(--accent-green);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-red: var(--accent-red);
+  --color-accent-yellow: var(--accent-yellow);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-active: var(--border-active);
+
+  --animate-shimmer: shimmer 2s infinite linear;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-ripple: ripple 0.6s linear;
+}
+
+:root {
+  --bg-base: #0a0a0f;
+  --bg-surface: #0f1117;
+  --bg-elevated: #141721;
+
+  --accent-green: #00ff88;
+  --accent-blue: #0ea5e9;
+  --accent-red: #ff4444;
+  --accent-yellow: #f59e0b;
+
+  --text-primary: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+
+  --border-subtle: #1a1f2e;
+  --border-active: #0ea5e9;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  position: relative;
+  min-height: 100vh;
+}
+
+/* 1. SCANLINE EFFECT */
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.2)
+  );
+  background-size: 100% 4px;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 2. BLINKING CURSOR */
+.terminal-cursor::after {
+  content: "_";
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes ripple {
+  from {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(25);
+    opacity: 0;
+  }
+}
+
+@utility glow-active {
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+}
+
+@utility terminal-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}

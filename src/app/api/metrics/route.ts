@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { countByCategory, getDashboardStats, getEstimatedClaimableValue } from '@/modules/freebies/freebies.service';
+import { getClaimStats } from '@/modules/claimlogs/claimlogs.service';
+import { getRecentAgentRuns } from '@/modules/agents/agent.runner';
 
 /**
  * GET /api/metrics
@@ -16,44 +18,21 @@ import { logger } from '@/lib/logger';
  */
 export async function GET() {
   try {
-    const [byStatus, byCategory, claimStats, recentAgentRuns, valueAggregate] = await Promise.all([
-      prisma.freebie.groupBy({ by: ['status'], _count: { _all: true } }),
-      prisma.freebie.groupBy({ by: ['category'], _count: { _all: true } }),
-      prisma.claimLog.groupBy({ by: ['status'], _count: { _all: true } }),
-      prisma.agentRunLog.findMany({
-        orderBy: { runAt: 'desc' },
-        take: 10,
-        select: { agentName: true, runAt: true, actions: true },
-      }),
-      prisma.freebie.aggregate({
-        where: { status: 'analyzed', eligibleVn: true },
-        _sum: { valueUsd: true },
-        _count: { _all: true },
-      }),
+    const [byStatus, byCategory, claimMap, recentAgentRuns, estimatedValue] = await Promise.all([
+      getDashboardStats(),
+      countByCategory(),
+      getClaimStats(),
+      getRecentAgentRuns(10),
+      getEstimatedClaimableValue(),
     ]);
-
-    const statusMap = byStatus.reduce<Record<string, number>>((acc, r) => {
-      acc[r.status] = r._count._all;
-      return acc;
-    }, {});
-
-    const categoryMap = byCategory.reduce<Record<string, number>>((acc, r) => {
-      acc[r.category] = r._count._all;
-      return acc;
-    }, {});
-
-    const claimMap = claimStats.reduce<Record<string, number>>((acc, r) => {
-      acc[r.status] = r._count._all;
-      return acc;
-    }, {});
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       freebies: {
-        byStatus: statusMap,
-        byCategory: categoryMap,
-        estimatedClaimableValueUsd: valueAggregate._sum.valueUsd ?? 0,
-        eligibleAnalyzedCount: valueAggregate._count._all,
+        byStatus,
+        byCategory,
+        estimatedClaimableValueUsd: estimatedValue._sum.valueUsd ?? 0,
+        eligibleAnalyzedCount: estimatedValue._count._all,
       },
       claims: claimMap,
       recentAgentRuns,

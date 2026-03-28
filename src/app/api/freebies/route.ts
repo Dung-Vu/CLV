@@ -1,21 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { listFreebies } from '@/modules/freebies/freebies.service';
-import type { FreebieStatus } from '@/types';
-
-const VALID_STATUSES: FreebieStatus[] = [
-  'raw', 'analyzed', 'claimed', 'ignored', 'expired', 'analysis_error',
-];
 
 const querySchema = z.object({
-  status: z.string().optional().transform((v) => {
-    if (!v) return undefined;
-    return VALID_STATUSES.includes(v as FreebieStatus) ? (v as FreebieStatus) : undefined;
-  }),
+  status: z
+    .enum(['raw', 'analyzed', 'claimed', 'ignored', 'expired', 'analysis_error'])
+    .optional(),
   minScore: z.coerce.number().optional(),
   category: z.string().optional(),
   tier: z.enum(['A', 'B', 'C']).optional(),
   search: z.string().optional(),
+  sort: z.enum(['score', 'createdAt', 'valueUsd']).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });
@@ -32,7 +28,11 @@ export async function GET(req: NextRequest) {
     }
     const result = await listFreebies(query.data);
     return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch freebies' }, { status: 500 });
+  } catch (err) {
+    logger.error('GET /api/freebies error', { error: err instanceof Error ? err.message : err });
+    return NextResponse.json(
+      { error: 'Failed to fetch freebies', code: 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
   }
 }

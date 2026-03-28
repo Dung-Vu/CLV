@@ -44,8 +44,27 @@ export async function updateAnalysis(freebieId: string, analysis: UpdateAnalysis
 
 export async function getDashboardStats() {
   const counts = await freebiesRepository.countByStatus();
-  return counts.reduce<Record<string, number>>((acc, row) => {
-    acc[row.status] = row._count._all;
-    return acc;
-  }, {});
+  const result: Record<string, number> = {};
+  for (const row of counts) {
+    result[row.status] = row._count._all;
+  }
+  return result;
+}
+
+export async function countByCategory() {
+  const rows = await freebiesRepository.countByCategory();
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.category] = row._count._all;
+  }
+  return result;
+}
+
+export async function countByStatus(status: string): Promise<number> {
+  const stats = await getDashboardStats();
+  return stats[status] ?? 0;
+}
+
+export async function getEstimatedClaimableValue() {
+  return freebiesRepository.getEstimatedClaimableValue();
 }

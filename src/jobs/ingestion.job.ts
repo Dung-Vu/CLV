@@ -3,6 +3,8 @@
  * Job: Run ingestion once — fetch from all enabled sources and save raw freebies.
  * Usage: npm run ingest:once
  */
+import '@/lib/env'; // validate env vars at startup — throws immediately if misconfigured
+
 import { runIngestionOnce } from '@/modules/ingestion/ingestion.service';
 import { logger } from '@/lib/logger';
 

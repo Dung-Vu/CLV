@@ -1,50 +1,57 @@
-import { type NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import {
-  getFreebieById,
-  markClaimed,
-  markIgnored,
-} from '@/modules/freebies/freebies.service';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
-const patchSchema = z.object({
-  action: z.enum(['claimed', 'ignored']),
-  note: z.string().optional(),
-});
-
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const freebie = await getFreebieById(id);
-  if (!freebie) {
-    return NextResponse.json({ error: 'Freebie not found' }, { status: 404 });
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const freebie = await prisma.freebie.findUnique({
+      where: { id: params.id },
+      include: { claimLogs: { orderBy: { createdAt: 'desc' } } }
+    });
+    if (!freebie) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(freebie);
+  } catch(e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
-  return NextResponse.json(freebie);
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
-    const parsed = patchSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid request body', code: 'VALIDATION_ERROR' },
-        { status: 400 },
-      );
-    }
-    const { action, note } = parsed.data;
-    if (action === 'claimed') {
-      await markClaimed(id, note);
+    const { status } = body;
+
+    const freebie = await prisma.freebie.findUnique({ where: { id: params.id } });
+    if (!freebie) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // Ensure status creates explicit claim validation hook
+    if (status === 'claimed') {
+      await prisma.$transaction([
+        prisma.freebie.update({
+          where: { id: params.id },
+          data: { status: 'claimed' }
+        }),
+        prisma.claimLog.create({
+          data: {
+            freebieId: params.id,
+            status: 'success',
+            mode: 'manual',
+            note: 'Manual claim triggered from dashboard',
+            errorMsg: null,
+            startedAt: new Date(),
+            finishedAt: new Date()
+          }
+        })
+      ]);
     } else {
-      await markIgnored(id, note);
+      await prisma.freebie.update({
+        where: { id: params.id },
+        data: { status }
+      });
     }
+
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+  } catch(e: any) {
+    logger.error('PATCH /api/freebies/[id] error:', e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

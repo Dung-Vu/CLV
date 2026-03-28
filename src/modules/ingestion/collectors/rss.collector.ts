@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { logger } from '@/lib/logger';
 import type { SourceConfig } from '@/modules/sources/sources.config';
 import type { Collector, RawItem } from '../ingestion.types';
 
@@ -18,14 +19,28 @@ export const rssCollector: Collector = {
 
   async ingest(source: SourceConfig): Promise<RawItem[]> {
     const feed = await parser.parseURL(source.url);
+    const items: RawItem[] = [];
 
-    return (feed.items ?? []).map((item) => ({
-      title: item.title?.trim() ?? 'Untitled',
-      url: item.link ?? item.guid ?? '',
-      description: item.contentSnippet ?? item.content ?? item.summary ?? undefined,
-      sourceId: source.id,
-      sourceName: source.name,
-      publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,
-    })).filter((item) => item.url.length > 0);
+    for (const item of feed.items ?? []) {
+      try {
+        const url = item.link ?? item.guid ?? '';
+        if (!url) continue;
+        items.push({
+          title: item.title?.trim() ?? 'Untitled',
+          url,
+          description: item.contentSnippet ?? item.content ?? item.summary ?? undefined,
+          sourceId: source.id,
+          sourceName: source.name,
+          publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,
+        });
+      } catch (err) {
+        logger.warn('Failed to parse RSS item', {
+          sourceId: source.id,
+          error: (err as Error).message,
+        });
+      }
+    }
+
+    return items;
   },
 };

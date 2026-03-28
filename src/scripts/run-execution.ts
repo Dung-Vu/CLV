@@ -33,32 +33,27 @@ async function main() {
   const candidates = await getAutoCandidates(10);
 
   if (candidates.length === 0) {
-    logger.info('No auto-candidates found');
-    console.log('\n🔍 No Tier A auto-candidate freebies found.\n');
+    logger.info('No Tier A auto-candidate freebies found');
     process.exit(0);
   }
 
-  console.log(`\n📋 Found ${candidates.length} auto-candidate(s):\n`);
-  for (const f of candidates) {
-    console.log(`  • [${f.tier ?? '?'}] score=${f.score} — ${f.title}`);
-    console.log(`    ${f.url}\n`);
-  }
-
-  if (mode === 'dry_run') {
-    console.log('🧪 Running in DRY-RUN mode — no real browser actions.\n');
-  } else {
-    console.log('🚀 Running in SEMI-AUTO mode — real browser will be launched!\n');
-  }
+  logger.info(`Found ${candidates.length} auto-candidate(s)`, {
+    candidates: candidates.map((f) => ({ tier: f.tier, score: f.score, title: f.title, url: f.url })),
+  });
+  logger.info(
+    mode === 'dry_run'
+      ? 'Running in DRY-RUN mode — no real browser actions'
+      : 'Running in SEMI-AUTO mode — real browser will be launched',
+  );
 
   const rl = readline.createInterface({ input, output });
 
   for (const freebie of candidates) {
-    console.log(`\n[${freebie.tier}] ${freebie.title}`);
-    console.log(`    URL: ${freebie.url}`);
+    logger.info(`Candidate: [${freebie.tier ?? '?'}] ${freebie.title}`, { url: freebie.url });
 
     const proceed = await confirm(rl, `  Execute? (y/N) `);
     if (!proceed) {
-      console.log('  → Skipped.\n');
+      logger.info('Skipped', { freebieId: freebie.id });
       continue;
     }
 
@@ -66,18 +61,14 @@ async function main() {
       const result = await executeFreebie(freebie.id, mode);
 
       if (result.success) {
-        console.log('  ✅ Success!');
+        logger.info('Execution success', { freebieId: freebie.id });
       } else {
-        console.log(`  ❌ Failed: ${result.error ?? 'unknown error'}`);
+        logger.warn('Execution failed', { freebieId: freebie.id, error: result.error ?? 'unknown error' });
       }
-
-      console.log('  Steps:');
-      for (const step of result.stepsLog) {
-        console.log(`    - ${step}`);
-      }
+      logger.info('Steps log', { freebieId: freebie.id, steps: result.stepsLog });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.log(`  ⚠️  Error: ${msg}`);
+      logger.error('Execution error', { freebieId: freebie.id, error: msg });
     }
   }
 

@@ -1,11 +1,13 @@
 import { getLlmClient } from '@/lib/llm';
 import { logger } from '@/lib/logger';
 import { findPendingRaw, updateAnalysis } from '@/modules/freebies/freebies.service';
+import { scoreFreebie } from '../scoring/engine';
+import { classifyTier } from '../policy/classifier';
 import { ANALYZER_VERSION, buildAnalyzerPrompt } from './analyzer.prompt';
 import { analyzerOutputSchema } from './analyzer.types';
 import type { AnalyzerInput } from './analyzer.types';
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 
 async function callLlmWithRetry(input: AnalyzerInput): Promise<string> {
   const prompt = buildAnalyzerPrompt(input);
@@ -19,7 +21,7 @@ async function callLlmWithRetry(input: AnalyzerInput): Promise<string> {
       return response.content;
     } catch (err) {
       if (attempt === MAX_RETRIES) throw err;
-      const delayMs = attempt * 2000;
+      const delayMs = Math.pow(2, attempt - 1) * 1000; // exponential: 1s, 2s, 4s
       logger.warn('LLM call failed, retrying', { attempt, delayMs, freebieId: input.id });
       await new Promise((r) => setTimeout(r, delayMs));
     }
@@ -67,14 +69,37 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
 
     const validated = analyzerOutputSchema.parse(parsed);
 
+    // Apply strict deterministic scoring and policy classification
+    const engineResult = scoreFreebie({
+      eligibleVn: !!validated.eligible_vn,
+      riskLevel: (validated.risk_level as any) || 'unknown',
+      cardRequired: !!validated.card_required,
+      kycRequired: !!validated.kyc_required,
+      frictionLevel: (validated.friction_level as any) || 'unknown',
+      valueUsd: validated.value_usd ?? null,
+      expiry: validated.expiry || null,
+      category: validated.category || 'unknown',
+      isDeal: !!validated.is_deal,
+    });
+
+    const finalTier = classifyTier({
+      eligibleVn: !!validated.eligible_vn,
+      riskLevel: (validated.risk_level as any) || 'unknown',
+      cardRequired: !!validated.card_required,
+      kycRequired: !!validated.kyc_required,
+      frictionLevel: (validated.friction_level as any) || 'unknown',
+      isDeal: !!validated.is_deal,
+      score: engineResult.score,
+    });
+
     await updateAnalysis(freebieId, {
       valueUsd: validated.value_usd,
       expiry: validated.expiry ? new Date(validated.expiry) : null,
       eligibleVn: validated.eligible_vn,
       riskLevel: validated.risk_level,
       category: validated.category,
-      score: validated.score,
-      tier: validated.tier_hint,
+      score: engineResult.score,
+      tier: finalTier,
       summaryVi: validated.summary_vi,
       stepsJson: JSON.stringify(validated.steps),
       cardRequired: validated.card_required,
@@ -84,10 +109,12 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
       status: 'analyzed',
     });
 
-    logger.info('Freebie analyzed', {
+    logger.info('Freebie analyzed by AI & Engine', {
       freebieId,
-      score: validated.score,
-      tier: validated.tier_hint,
+      score: engineResult.score,
+      tier: finalTier,
+      llmScoreHint: validated.score,
+      llmTierHint: validated.tier_hint,
       eligibleVn: validated.eligible_vn,
     });
 

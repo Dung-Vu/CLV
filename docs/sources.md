@@ -35,93 +35,163 @@ CLV ưu tiên nguồn theo thứ tự sau:
 
 ---
 
-## 3. Danh sách nguồn khởi đầu để xuyết
+## 3. Danh sách nguồn khởi đầu
 
-## 3.1. RSS / Freebie / Deal discovery
+## 3.1. RSS / Deal Discovery — Phase 4
 
 ### 1) Hacker News
-- **Loại**: community / launch / discovery
-- **Collector dự kiến**: RSS hoặc API wrapper
+- **id**: `hackernews-rss`
+- **kind**: `rss` · **URL**: `https://news.ycombinator.com/rss`
+- **enabled**: true · **priority**: medium · **trustLevel**: medium
+- **tags**: dev, ai, saas, launch
 - **Giá trị**: tốt cho dev tools, AI tools mới, launch sớm
 - **Rủi ro**: nhiều noise, cần scoring tốt
-- **Ưu tiên**: Medium
 
 ### 2) Product Hunt
-- **Loại**: launch discovery
-- **Collector dự kiến**: feed/API/manual curated
+- **id**: `producthunt-rss`
+- **kind**: `rss` · **URL**: `https://www.producthunt.com/feed`
+- **enabled**: true · **priority**: high · **trustLevel**: high
+- **tags**: ai, saas, launch
 - **Giá trị**: tốt cho AI/SaaS mới có deal launch
 - **Rủi ro**: nhiều sản phẩm không có free plan thật sự
-- **Ưu tiên**: High
 
-### 3) SaaSHub / alternative listing pages
-- **Loại**: curated directory
-- **Collector dự kiến**: HTML curated page collector
-- **Giá trị**: tìm free tools và alternative pages
-- **Rủi ro**: không phải lúc nào cũng có promo time-bound
-- **Ưu tiên**: Medium
-
-### 4) BetaList
-- **Loại**: startup launch discovery
-- **Collector dự kiến**: RSS/HTML nếu phù hợp
+### 3) BetaList
+- **id**: `betalist-rss`
+- **kind**: `rss` · **URL**: `https://betalist.com/feed`
+- **enabled**: true · **priority**: medium · **trustLevel**: medium
+- **tags**: startup, early-access, saas
 - **Giá trị**: có thể phát hiện early-access / credits
 - **Rủi ro**: nhiều deal chưa rõ value
-- **Ưu tiên**: Medium
 
-## 3.2. Curated article / review / guide sources
+### 4) DEV.to — free tools tag
+- **id**: `dev-to-rss`
+- **kind**: `rss` · **URL**: `https://dev.to/feed/tag/freetools`
+- **enabled**: false · **priority**: low · **trustLevel**: medium
+- **tags**: dev, tools, freetools
+- **Giá trị**: community posts về free tools
+- **Rủi ro**: chất lượng không đồng đều
 
-### 5) FutureTools / AI tool directories
-- **Loại**: curated AI tools
-- **Collector dự kiến**: article/list collector
-- **Giá trị**: hữu ích cho use case AI tools
-- **Rủi ro**: cần filter mạnh để phân biệt free thật vs “free trial ngắn”
-- **Ưu tiên**: High
+## 3.2. Official Vendor Blogs (RSS) — Phase 4
 
-### 6) Blog tổng hợp “best free AI tools”
-- **Loại**: curated articles
-- **Collector dự kiến**: manual curated list + article parser đơn giản
-- **Giá trị**: tốt cho discovery giai đoạn đầu
-- **Rủi ro**: bài cũ dễ stale
-- **Ưu tiên**: High
+### 5) GitHub Blog
+- **id**: `github-blog-rss`
+- **kind**: `rss` · **URL**: `https://github.blog/feed/`
+- **enabled**: true · **priority**: high · **trustLevel**: high
+- **tags**: dev, credits, official
+- **Giá trị**: GitHub Education, Copilot updates, free tiers
 
-### 7) Blog tổng hợp “best SaaS free trials”
-- **Loại**: curated articles
-- **Collector dự kiến**: manual curated list
-- **Giá trị**: hỗ trợ map market nhanh
-- **Rủi ro**: nhiều bài SEO spam, cần chọn tay kỹ
-- **Ưu tiên**: High
+### 6) GitHub Education Blog
+- **id**: `github-education-blog`
+- **kind**: `rss` · **URL**: `https://github.blog/tag/education/feed/`
+- **enabled**: true · **priority**: high · **trustLevel**: high
+- **tags**: education, devtools, credits, official
+- **Giá trị**: GitHub Student Developer Pack updates, free credits for students
 
-## 3.3. Official vendor / promo sources
+### 7) JetBrains Blog
+- **id**: `jetbrains-blog-rss`
+- **kind**: `rss` · **URL**: `https://blog.jetbrains.com/feed/`
+- **enabled**: true · **priority**: medium · **trustLevel**: high
+- **tags**: devtools, education, official
+- **Giá trị**: JetBrains free licenses, student programs
 
-### 8) Official pricing / free plan pages của vendor lớn
-- **Loại**: official source
-- **Collector dự kiến**: targeted HTML collector
-- **Giá trị**: dữ liệu đáng tin cậy nhất về free plan
-- **Rủi ro**: không phải lúc nào cũng có promo đặc biệt
-- **Ưu tiên**: High
+### 8) AWS News Blog
+- **id**: `aws-blog-rss`
+- **kind**: `rss` · **URL**: `https://aws.amazon.com/blogs/aws/feed/`
+- **enabled**: false · **priority**: medium · **trustLevel**: high
+- **tags**: cloud, credits, official
+- **Giá trị**: AWS free tier announcements, credit programs
 
-### 9) Official startup / student / nonprofit credit pages
-- **Loại**: official program pages
-- **Collector dự kiến**: targeted source config
-- **Giá trị**: tốt cho cloud credits và dev credits
-- **Rủi ro**: eligibility phức tạp
-- **Ưu tiên**: High
+### 9) Vercel Blog
+- **id**: `vercel-blog-rss`
+- **kind**: `rss` · **URL**: `https://vercel.com/blog/rss.xml`
+- **enabled**: false · **priority**: medium · **trustLevel**: high
+- **tags**: devtools, cloud, official
+- **Giá trị**: Vercel free tier updates, Next.js announcements
 
-## 3.4. Community sources (mở rộng sau)
+### 10) Supabase Blog
+- **id**: `supabase-blog-rss`
+- **kind**: `rss` · **URL**: `https://supabase.com/blog/rss.xml`
+- **enabled**: false · **priority**: medium · **trustLevel**: high
+- **tags**: cloud, devtools, official
+- **Giá trị**: Supabase free tier, credits, new features
 
-### 10) Reddit — r/SaaS, r/SideProject, r/Entrepreneur
-- **Loại**: community launch / founder promo
-- **Collector dự kiến**: Reddit API/manual later
-- **Giá trị**: có thể có promo code hoặc early-access
+## 3.3. Curated AI Tool Directories (HTML/RSS) — Phase 4
+
+### 11) There's An AI For That
+- **id**: `theresanaiforthat-rss`
+- **kind**: `rss` · **URL**: `https://theresanaiforthat.com/rss/`
+- **enabled**: false · **priority**: high · **trustLevel**: medium
+- **tags**: ai, curated, tools
+- **Giá trị**: curated AI tool directory — filter cho free/freemium
+- **Rủi ro**: cần filter mạnh để phân biệt free thật vs "free trial ngắn"
+
+### 12) FutureTools
+- **id**: `futuretools-html`
+- **kind**: `html` · **URL**: `https://www.futuretools.io/`
+- **enabled**: false · **priority**: high · **trustLevel**: medium
+- **tags**: ai, curated, tools
+- **Giá trị**: AI tools directory với free tier filter
+- **Rủi ro**: cần HTML collector, cấu trúc có thể thay đổi
+
+### 13) SaaSHub — Free Alternatives
+- **id**: `saashub-html`
+- **kind**: `html` · **URL**: `https://www.saashub.com/free`
+- **enabled**: false · **priority**: medium · **trustLevel**: medium
+- **tags**: saas, curated, alternatives
+- **Giá trị**: tìm free tools và alternative pages
+- **Rủi ro**: không phải lúc nào cũng có promo time-bound
+
+## 3.4. Official Vendor Pages (HTML) — Phase 4
+
+### 14) Epic Games Free Games
+- **id**: `epicgames-free-html`
+- **kind**: `html` · **URL**: `https://store.epicgames.com/en-US/free-games`
+- **enabled**: false · **priority**: medium · **trustLevel**: high
+- **tags**: gaming, official
+- **Ghi chú**: không có RSS — cần HTML collector
+
+## 3.5. Ecommerce / Voucher VN — Phase 4
+
+### 15) MMO4ME — Deals & Vouchers
+- **id**: `mmo4me-rss`
+- **kind**: `rss` · **URL**: `https://mmo4me.com/forums/-/index.rss`
+- **enabled**: false · **priority**: medium · **trustLevel**: medium
+- **tags**: voucher, ecommerce, vn
+- **Rủi ro**: chất lượng không đồng đều, enable thận trọng
+
+## 3.6. Community Sources — Phase 7+
+
+> Không enable cho tới khi scoring và filtering đã ổn định.
+
+### 16) Reddit — r/SaaS
+- **id**: `reddit-saas`
+- **kind**: `reddit` · **URL**: `https://www.reddit.com/r/SaaS/.rss`
+- **enabled**: false · **priority**: medium · **trustLevel**: medium
+- **tags**: community, saas, launch
+- **Giá trị**: founder promos và launch deals
 - **Rủi ro**: noise cao
-- **Ưu tiên**: Low–Medium
 
-### 11) X/Twitter list của founder / AI tool hunters
-- **Loại**: social
-- **Collector dự kiến**: manual curation, không auto sớm
-- **Giá trị**: deal xuất hiện rất sớm
-- **Rủi ro**: API khó, anti-bot, ToS risk cao hơn
-- **Ưu tiên**: Low ở giai đoạn đầu
+### 17) Reddit — r/SideProject
+- **id**: `reddit-sideproject`
+- **kind**: `reddit` · **URL**: `https://www.reddit.com/r/SideProject/.rss`
+- **enabled**: false · **priority**: low · **trustLevel**: medium
+- **tags**: community, launch, saas
+- **Giá trị**: indie launches kèm promo codes
 
+### 18) Reddit — r/Entrepreneur
+- **id**: `reddit-entrepreneur`
+- **kind**: `reddit` · **URL**: `https://www.reddit.com/r/Entrepreneur/.rss`
+- **enabled**: false · **priority**: low · **trustLevel**: medium
+- **tags**: community, saas, deals
+- **Giá trị**: occasional deal posts từ founders
+
+### 19) X/Twitter — AI Tool Hunters List
+- **id**: `twitter-ai-hunters`
+- **kind**: `twitter` · **URL**: TBD (cần Twitter API v2 + list ID)
+- **enabled**: false · **priority**: medium · **trustLevel**: low
+- **tags**: social, ai, launch
+- **Giá trị**: deal signal sớm nhất từ AI founders
+- **Rủi ro**: API khó, anti-bot, ToS risk — không auto sớm
 ---
 
 ## 4. `SourceConfig` đề xuất

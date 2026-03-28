@@ -14,18 +14,15 @@ import { runAllAgents } from '@/modules/agents/agent.runner';
 import { logger } from '@/lib/logger';
 
 async function main() {
-  console.log('\n🤖 CLV Agent Runner\n');
+  logger.info('=== CLV Agent Runner START ===');
 
   const results = await runAllAgents();
 
   for (const result of results) {
-    console.log(`\n━━ [${result.name}] ━━`);
-    for (const action of result.actions) {
-      console.log(`  ${action}`);
-    }
+    logger.info(`Agent finished: ${result.name}`, { actions: result.actions });
   }
 
-  console.log('\n✅ All agents finished.\n');
+  logger.info('=== CLV Agent Runner DONE ===', { agentsRun: results.length });
 }
 
 main().catch((err) => {

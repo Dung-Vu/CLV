@@ -48,4 +48,44 @@ describe('computeScore', () => {
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(100);
   });
+
+  // ── Edge cases ─────────────────────────────────────────────────────────
+
+  it('penalizes KYC required', () => {
+    const withKyc = computeScore({ ...baseCtx, kycRequired: true });
+    const noKyc = computeScore({ ...baseCtx, kycRequired: false });
+    expect(noKyc.score).toBeGreaterThan(withKyc.score);
+  });
+
+  it('penalizes high friction', () => {
+    const highFriction = computeScore({ ...baseCtx, frictionLevel: 'high' });
+    const lowFriction = computeScore({ ...baseCtx, frictionLevel: 'low' });
+    expect(lowFriction.score).toBeGreaterThan(highFriction.score);
+  });
+
+  it('penalizes unknown risk vs low risk', () => {
+    const unknown = computeScore({ ...baseCtx, riskLevel: 'unknown' });
+    const low = computeScore({ ...baseCtx, riskLevel: 'low' });
+    expect(low.score).toBeGreaterThan(unknown.score);
+  });
+
+  it('penalizes very imminent expiry (< 3 days)', () => {
+    const soon = new Date(Date.now() + 2 * 86_400_000); // 2 days
+    const later = new Date(Date.now() + 30 * 86_400_000); // 30 days
+    const imminentScore = computeScore({ ...baseCtx, expiry: soon });
+    const laterScore = computeScore({ ...baseCtx, expiry: later });
+    expect(laterScore.score).toBeGreaterThan(imminentScore.score);
+  });
+
+  it('rewards very high value deals (valueUsd >= 200)', () => {
+    const highValue = computeScore({ ...baseCtx, valueUsd: 200 });
+    const lowValue = computeScore({ ...baseCtx, valueUsd: 10 });
+    expect(highValue.score).toBeGreaterThan(lowValue.score);
+  });
+
+  it('returns reasons array in result', () => {
+    const result = computeScore(baseCtx);
+    expect(Array.isArray(result.reasons)).toBe(true);
+    expect(result.reasons.length).toBeGreaterThan(0);
+  });
 });

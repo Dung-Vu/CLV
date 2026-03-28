@@ -4,69 +4,65 @@ import type { PolicyInput, PolicyResult } from './policy.types';
 /**
  * Classifies a deal into Tier A / B / C based on risk & eligibility signals.
  * Follows the canonical definition in docs/tier-policy.md.
+ *
+ * Evaluation order: C (hard gates) → B (caution triggers) → A (fallback when fully clean).
  */
 export function classifyTier(input: PolicyInput): DealTier {
   const { eligibleVn, riskLevel, cardRequired, kycRequired, frictionLevel, score } = input;
 
-  // Tier C: high risk, not eligible, or very low score
-  if (
-    !eligibleVn ||
-    riskLevel === 'high' ||
-    score < 30
-  ) {
+  // Tier C: hard gates — any one match → hidden by default, no auto
+  if (!eligibleVn || riskLevel === 'high' || score < 30) {
     return 'C';
   }
 
-  // Tier A: low-risk, no card, low/medium friction, eligible VN
+  // Tier B: any caution trigger — display with warning, no auto
   if (
-    eligibleVn &&
-    riskLevel === 'low' &&
-    !cardRequired &&
-    !kycRequired &&
-    (frictionLevel === 'low' || frictionLevel === 'medium')
+    cardRequired ||
+    kycRequired ||
+    frictionLevel === 'high' ||
+    frictionLevel === 'unknown' || // cannot confirm low/medium
+    riskLevel === 'medium' ||
+    riskLevel === 'unknown' // cannot confirm low
   ) {
-    return 'A';
+    return 'B';
   }
 
-  // Tier B: everything else that isn't C
-  return 'B';
+  // Tier A: eligible VN + low risk + no card/KYC + low|medium friction
+  return 'A';
 }
 
 /**
  * Evaluates the full execution policy for a deal.
  * Returns tier, recommendation, and whether it's an auto-claim candidate.
+ *
+ * `isAutoCandidate` is true ONLY when tier === 'A' AND autoClaimEnabled === true.
+ * `recommendation` is 'auto_candidate' only when isAutoCandidate is true.
  */
-export function evaluateExecutionPolicy(input: PolicyInput, mode: AppMode): PolicyResult {
+export function evaluateExecutionPolicy(
+  input: PolicyInput,
+  mode: AppMode,
+  autoClaimEnabled: boolean,
+): PolicyResult {
   const tier = input.tier ?? classifyTier(input);
+  const isAutoCandidate = tier === 'A' && autoClaimEnabled;
 
   let recommendation: PolicyResult['recommendation'];
 
-  if (tier === 'C' || !input.eligibleVn) {
+  if (tier === 'C') {
     recommendation = 'ignore';
-  } else if (tier === 'A' && input.score >= 70) {
-    recommendation = 'strong_suggest';
+  } else if (isAutoCandidate) {
+    recommendation = 'auto_candidate';
   } else if (tier === 'A') {
-    recommendation = 'consider_manual';
+    recommendation = 'strong_suggest';
   } else {
     // Tier B
     recommendation = 'consider_manual';
   }
 
-  // Auto-candidate: Tier A, good score, no card/KYC required
-  const isAutoCandidate =
-    tier === 'A' &&
-    input.score >= 70 &&
-    !input.cardRequired &&
-    !input.kycRequired;
-
   return { tier, recommendation, isAutoCandidate, mode };
 }
 
 export function isExecutionAllowed(result: PolicyResult): boolean {
-  // Tier C is never executable regardless of mode
-  if (result.tier === 'C') return false;
-  // Tier B is never auto, only manual
-  if (result.tier === 'B') return false;
-  // Tier A + auto candidate
+  // isAutoCandidate already encodes: tier === 'A' && autoClaimEnabled
   return result.isAutoCandidate;
 }

@@ -20,6 +20,19 @@ const envSchema = z.object({
   CLAIM_EMAIL: z.string().email().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),
+  // Per-agent enable/disable flags (all default to enabled)
+  AGENT_SUPERVISOR_ENABLED: z
+    .string()
+    .transform((v) => v !== 'false')
+    .default('true'),
+  AGENT_RESEARCH_ENABLED: z
+    .string()
+    .transform((v) => v !== 'false')
+    .default('true'),
+  AGENT_EXECUTION_ENABLED: z
+    .string()
+    .transform((v) => v !== 'false')
+    .default('true'),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -27,6 +40,8 @@ export type Env = z.infer<typeof envSchema>;
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
+  // console.error intentionally used here — logger.ts chưa khởi tạo tại bootstrap,
+  // dùng logger sẽ gây circular init. Đây là exception duy nhất cho rule no-console.
   console.error('❌ Invalid environment variables:', parsed.error.flatten().fieldErrors);
   throw new Error('Invalid environment variables — check your .env file');
 }

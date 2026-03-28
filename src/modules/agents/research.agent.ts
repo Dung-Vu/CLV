@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { env } from '@/lib/env';
 import { SOURCES } from '@/modules/sources/sources.config';
 import type { Agent, AgentContext, AgentResult } from './agent.types';
 
@@ -6,23 +7,23 @@ import type { Agent, AgentContext, AgentResult } from './agent.types';
  * ResearchAgent — explores the current sources registry and produces
  * recommendations for enabling / adding sources.
  *
- * Phase 9 MVP: pure static analysis (no LLM).  A future version can use
- * LLM to scan community channels (Reddit / HN) for newly trending tools.
+ * Orchestration only: pure static analysis of source config (no LLM, no DB).
+ * A future version can use LLM to scan community channels for trending tools.
  */
 const researchAgent: Agent = {
   name: 'ResearchAgent',
+  get enabled() { return env.AGENT_RESEARCH_ENABLED; },
 
   async run(_ctx: AgentContext): Promise<AgentResult> {
     const actions: string[] = [];
+    const log = (msg: string) => { actions.push(msg); };
 
-    logger.info('[ResearchAgent] run started');
+    logger.info('run started', { agent: 'ResearchAgent' });
 
     const enabled = SOURCES.filter((s) => s.enabled);
     const disabled = SOURCES.filter((s) => !s.enabled);
 
-    actions.push(
-      `Sources: ${enabled.length} enabled, ${disabled.length} disabled`,
-    );
+    log(`Sources: ${enabled.length} enabled, ${disabled.length} disabled`);
 
     // Report disabled sources that might be worth enabling
     if (disabled.length > 0) {
@@ -30,14 +31,14 @@ const researchAgent: Agent = {
       const medium = disabled.filter((s) => s.priority === 'medium');
 
       if (high.length > 0) {
-        actions.push(
+        log(
           `SUGGESTION: ${high.length} high-priority source(s) are disabled: ` +
             high.map((s) => s.name).join(', '),
         );
       }
 
       if (medium.length > 0) {
-        actions.push(
+        log(
           `INFO: ${medium.length} medium-priority source(s) are disabled: ` +
             medium.map((s) => s.name).join(', '),
         );
@@ -53,14 +54,12 @@ const researchAgent: Agent = {
     }
 
     if (missingCategories.length > 0) {
-      actions.push(
-        `SUGGESTION: No enabled source covers categories: ${missingCategories.join(', ')} — consider adding feeds`,
-      );
+      log(`SUGGESTION: No enabled source covers categories: ${missingCategories.join(', ')} — consider adding feeds`);
     } else {
-      actions.push('Coverage looks good — all desired categories have at least one source');
+      log('Coverage looks good — all desired categories have at least one source');
     }
 
-    logger.info('[ResearchAgent] run finished', { actions });
+    logger.info('run finished', { agent: 'ResearchAgent', actionsCount: actions.length });
     return { name: 'ResearchAgent', actions };
   },
 };

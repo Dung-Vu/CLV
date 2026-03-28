@@ -1,6 +1,6 @@
 import type { AnalyzerInput } from './analyzer.types';
 
-export const ANALYZER_VERSION = 'v1';
+export const ANALYZER_VERSION = 'analyzer-v1';
 
 export function buildAnalyzerPrompt(input: AnalyzerInput): string {
   return `You are an analyzer for CLV, a personal self-hosted AI system that hunts freebies, trials, and promotions.
@@ -33,7 +33,8 @@ Return JSON with exactly these fields:
   "card_required": boolean,
   "kyc_required": boolean,
   "friction_level": "low" | "medium" | "high" | "unknown",
-  "tier_hint": "A" | "B" | "C"
+  "tier_hint": "A" | "B" | "C",
+  "is_deal": boolean
 }
 
 Field guidance:
@@ -52,6 +53,7 @@ Field guidance:
   - A: low-risk, no-card or low-friction, realistic for Vietnam
   - B: some friction or card/eligibility caution
   - C: high risk, unclear, restrictive, or low-confidence
+- is_deal: VERY IMPORTANT. Set to true ONLY if this is an actual actionable freebie, lifetime deal, software giveaway, coupon, or airdrop. Set to false if this is merely a news article, a technical blog post, a discussion, or an open-source repo without a specific consumable offer.
 
 Important rules:
 - Return ONLY JSON.
