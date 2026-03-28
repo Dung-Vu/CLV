@@ -1,18 +1,49 @@
-"use client";
+'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useEffect, useState } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
+import { ChartSkeleton } from './ChartSkeleton';
 
-export function ScoreDistributionChart({ data }: { data: { range: string, count: number }[] }) {
+export function ScoreDistributionChart({ data }: { data: { range: string; count: number }[] }) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const getFillColor = (range: string) => {
-    switch(range) {
-      case '0-30': return 'var(--accent-red)';
-      case '31-50': return 'var(--accent-yellow)';
-      case '51-70': return 'var(--accent-blue)';
-      case '71-90': return 'var(--accent-green)';
-      case '91-100': return '#00e67a'; // brighter green
-      default: return 'var(--accent-green)';
+    switch (range) {
+      case '0-30':
+        return 'var(--accent-red)';
+      case '31-50':
+        return 'var(--accent-yellow)';
+      case '51-70':
+        return 'var(--accent-blue)';
+      case '71-90':
+        return 'var(--accent-green)';
+      case '91-100':
+        return '#00e67a'; // brighter green
+      default:
+        return 'var(--accent-green)';
     }
   };
+
+  if (!isMounted) {
+    return (
+      <div className="w-full h-48 mt-4 font-mono text-xs">
+        <ChartSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-48 mt-4 font-mono text-xs">
@@ -23,11 +54,29 @@ export function ScoreDistributionChart({ data }: { data: { range: string, count:
           layout="vertical"
         >
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
-          <XAxis type="number" stroke="var(--text-dim)" fontSize={10} tickLine={false} axisLine={false} />
-          <YAxis dataKey="range" type="category" stroke="var(--text-dim)" fontSize={10} tickLine={false} axisLine={false} />
-          <Tooltip 
+          <XAxis
+            type="number"
+            stroke="var(--text-dim)"
+            fontSize={10}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            dataKey="range"
+            type="category"
+            stroke="var(--text-dim)"
+            fontSize={10}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
             cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-            contentStyle={{ backgroundColor: 'black', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: 'var(--text-primary)' }}
+            contentStyle={{
+              backgroundColor: 'black',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+            }}
             itemStyle={{ color: 'var(--accent-green)' }}
           />
           <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={20}>
