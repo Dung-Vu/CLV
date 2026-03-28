@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+const optionalTrimmedString = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
@@ -18,8 +24,8 @@ const envSchema = z.object({
     .transform((v) => v !== 'false')
     .default('true'),
   CLAIM_EMAIL: z.string().email().optional(),
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
-  TELEGRAM_CHAT_ID: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: optionalTrimmedString,
+  TELEGRAM_CHAT_ID: optionalTrimmedString,
   // Per-agent enable/disable flags (all default to enabled)
   AGENT_SUPERVISOR_ENABLED: z
     .string()

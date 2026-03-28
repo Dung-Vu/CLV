@@ -301,10 +301,12 @@ export const DICTIONARY = {
 
 export function getTranslation(lang: Lang, path: string) {
   const keys = path.split('.');
-  let result: any = DICTIONARY[lang] || DICTIONARY['vi'];
+  let result: unknown = DICTIONARY[lang] || DICTIONARY['vi'];
   for (const key of keys) {
-    if (result[key] === undefined) return path;
-    result = result[key];
+    if (!result || typeof result !== 'object' || !(key in result)) {
+      return path;
+    }
+    result = (result as Record<string, unknown>)[key];
   }
   return result as string;
 }

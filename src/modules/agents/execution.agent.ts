@@ -27,7 +27,8 @@ const executionAgent: Agent = {
   name: 'ExecutionAgent',
   get enabled() { return env.AGENT_EXECUTION_ENABLED; },
 
-  async run(_ctx: AgentContext): Promise<AgentResult> {
+  async run(ctx: AgentContext): Promise<AgentResult> {
+    void ctx;
     const actions: string[] = [];
     const log = (msg: string) => { actions.push(msg); };
 

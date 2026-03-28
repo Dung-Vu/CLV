@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { env } from '@/lib/env';
-import { sendPipelineAlert } from '@/lib/telegram';
+import { sendPipelineAlert } from '@/lib/integrations/telegram';
 import { getDashboardStats, getEstimatedClaimableValue } from '@/modules/freebies/freebies.service';
 import type { Agent, AgentContext, AgentResult } from './agent.types';
 
@@ -15,7 +15,8 @@ const supervisorAgent: Agent = {
   name: 'SupervisorAgent',
   get enabled() { return env.AGENT_SUPERVISOR_ENABLED; },
 
-  async run(_ctx: AgentContext): Promise<AgentResult> {
+  async run(ctx: AgentContext): Promise<AgentResult> {
+    void ctx;
     const actions: string[] = [];
     const log = (msg: string) => { actions.push(msg); };
 

@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { countByCategory, getDashboardStats, getEstimatedClaimableValue } from '@/modules/freebies/freebies.service';
+import {
+  countByCategory,
+  countEligibleAnalyzed,
+  getDashboardStats,
+  getEstimatedClaimableValue,
+} from '@/modules/freebies/freebies.service';
 import { getClaimStats } from '@/modules/claimlogs/claimlogs.service';
 import { getRecentAgentRuns } from '@/modules/agents/agent.runner';
 
@@ -18,12 +23,13 @@ import { getRecentAgentRuns } from '@/modules/agents/agent.runner';
  */
 export async function GET() {
   try {
-    const [byStatus, byCategory, claimMap, recentAgentRuns, estimatedValue] = await Promise.all([
+    const [byStatus, byCategory, claimMap, recentAgentRuns, estimatedValue, eligibleAnalyzedCount] = await Promise.all([
       getDashboardStats(),
       countByCategory(),
       getClaimStats(),
       getRecentAgentRuns(10),
       getEstimatedClaimableValue(),
+      countEligibleAnalyzed(),
     ]);
 
     return NextResponse.json({
@@ -31,8 +37,8 @@ export async function GET() {
       freebies: {
         byStatus,
         byCategory,
-        estimatedClaimableValueUsd: estimatedValue._sum.valueUsd ?? 0,
-        eligibleAnalyzedCount: estimatedValue._count._all,
+        estimatedClaimableValueUsd: estimatedValue,
+        eligibleAnalyzedCount,
       },
       claims: claimMap,
       recentAgentRuns,

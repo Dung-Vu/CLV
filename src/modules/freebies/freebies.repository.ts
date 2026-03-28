@@ -133,10 +133,17 @@ export const freebiesRepository = {
   },
 
   async getEstimatedClaimableValue() {
-    return prisma.freebie.aggregate({
+    const result = await prisma.freebie.aggregate({
       where: { status: 'analyzed', eligibleVn: true },
       _sum: { valueUsd: true },
-      _count: { _all: true },
+    });
+
+    return result._sum.valueUsd ?? 0;
+  },
+
+  async countEligibleAnalyzed() {
+    return prisma.freebie.count({
+      where: { status: 'analyzed', eligibleVn: true },
     });
   },
 };

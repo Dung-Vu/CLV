@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
@@ -16,7 +20,7 @@ export async function PATCH(req: Request) {
     }
 
     return NextResponse.json(prefs);
-  } catch(e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -1,9 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+export async function POST(_req: NextRequest, { params }: RouteParams) {
   try {
-    const source = await prisma.sourceConfig.findUnique({ where: { id: params.id } });
+    const { id } = await params;
+    const source = await prisma.sourceConfig.findUnique({ where: { id } });
     if (!source) return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     
     // Mock simulation wait for test
@@ -15,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       itemsFound: Math.floor(Math.random() * 20) + 1,
       sampleTitle: `[MOCK] Ingestion item from ${source.name}`
     });
-  } catch(e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

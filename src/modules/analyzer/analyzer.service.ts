@@ -5,7 +5,7 @@ import { scoreFreebie } from '../scoring/engine';
 import { classifyTier } from '../policy/classifier';
 import { ANALYZER_VERSION, buildAnalyzerPrompt } from './analyzer.prompt';
 import { analyzerOutputSchema } from './analyzer.types';
-import type { AnalyzerInput } from './analyzer.types';
+import type { AnalyzerFrictionLevel, AnalyzerInput, AnalyzerRiskLevel } from './analyzer.types';
 
 const MAX_RETRIES = 3;
 
@@ -68,14 +68,16 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
     }
 
     const validated = analyzerOutputSchema.parse(parsed);
+    const riskLevel: AnalyzerRiskLevel = validated.risk_level;
+    const frictionLevel: AnalyzerFrictionLevel = validated.friction_level;
 
     // Apply strict deterministic scoring and policy classification
     const engineResult = scoreFreebie({
       eligibleVn: !!validated.eligible_vn,
-      riskLevel: (validated.risk_level as any) || 'unknown',
+      riskLevel,
       cardRequired: !!validated.card_required,
       kycRequired: !!validated.kyc_required,
-      frictionLevel: (validated.friction_level as any) || 'unknown',
+      frictionLevel,
       valueUsd: validated.value_usd ?? null,
       expiry: validated.expiry || null,
       category: validated.category || 'unknown',
@@ -84,10 +86,10 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
 
     const finalTier = classifyTier({
       eligibleVn: !!validated.eligible_vn,
-      riskLevel: (validated.risk_level as any) || 'unknown',
+      riskLevel,
       cardRequired: !!validated.card_required,
       kycRequired: !!validated.kyc_required,
-      frictionLevel: (validated.friction_level as any) || 'unknown',
+      frictionLevel,
       isDeal: !!validated.is_deal,
       score: engineResult.score,
     });

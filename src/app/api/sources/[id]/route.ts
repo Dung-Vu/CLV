@@ -1,15 +1,34 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/db';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+const patchBodySchema = z.object({
+  enabled: z.boolean(),
+});
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    const { enabled } = await req.json();
+    const { id } = await params;
+    const parsed = patchBodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    const { enabled } = parsed.data;
     await prisma.sourceConfig.update({
-      where: { id: params.id },
+      where: { id },
       data: { enabled }
     });
     return NextResponse.json({ success: true });
-  } catch(e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

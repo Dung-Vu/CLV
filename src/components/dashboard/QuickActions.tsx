@@ -1,9 +1,13 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
-import { ActionButton } from "@/components/ui/ActionButton";
-import { toast } from "@/hooks/useToast";
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { ActionButton } from '@/components/ui/ActionButton';
+import { toast } from '@/hooks/useToast';
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
 
 export function QuickActions() {
   const [ingestionLoading, setIngestionLoading] = useState(false);
@@ -14,7 +18,11 @@ export function QuickActions() {
     setIngestionLoading(true);
     setTimeout(() => {
       setIngestionLoading(false);
-      toast({ type: 'SUCCESS', title: 'OPERATION COMPLETE', message: 'INGESTION COMPLETE · 12 deals found' });
+      toast({
+        type: 'SUCCESS',
+        title: 'OPERATION COMPLETE',
+        message: 'INGESTION COMPLETE · 12 deals found',
+      });
     }, 2000);
   };
 
@@ -22,7 +30,11 @@ export function QuickActions() {
     setAnalyzerLoading(true);
     setTimeout(() => {
       setAnalyzerLoading(false);
-      toast({ type: 'SUCCESS', title: 'OPERATION COMPLETE', message: 'ANALYSIS COMPLETE · 12 deals processed' });
+      toast({
+        type: 'SUCCESS',
+        title: 'OPERATION COMPLETE',
+        message: 'ANALYSIS COMPLETE · 12 deals processed',
+      });
     }, 2000);
   };
 
@@ -32,12 +44,16 @@ export function QuickActions() {
       const res = await fetch('/api/freebies/rescore-all', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        toast({ type: 'SUCCESS', title: 'OPERATION COMPLETE', message: `RESCORING DONE · ${data.updated} deals updated` });
+        toast({
+          type: 'SUCCESS',
+          title: 'OPERATION COMPLETE',
+          message: `RESCORING DONE · ${data.updated} deals updated`,
+        });
       } else {
         toast({ type: 'ERROR', title: 'OPERATION FAILED', message: data.error || 'Unknown error' });
       }
-    } catch (e: any) {
-      toast({ type: 'ERROR', title: 'NETWORK ERROR', message: e.message });
+    } catch (error: unknown) {
+      toast({ type: 'ERROR', title: 'NETWORK ERROR', message: getErrorMessage(error) });
     } finally {
       setRescoreLoading(false);
     }
@@ -45,7 +61,7 @@ export function QuickActions() {
 
   return (
     <div className="flex flex-col gap-5">
-      <ActionButton 
+      <ActionButton
         variant="primary"
         fullWidth
         onClick={handleRunIngestion}
@@ -65,7 +81,7 @@ export function QuickActions() {
         )}
       </ActionButton>
 
-      <ActionButton 
+      <ActionButton
         variant="secondary"
         fullWidth
         onClick={handleRunAnalyzer}
@@ -85,7 +101,7 @@ export function QuickActions() {
         )}
       </ActionButton>
 
-      <ActionButton 
+      <ActionButton
         variant="secondary"
         fullWidth
         onClick={handleRunRescore}

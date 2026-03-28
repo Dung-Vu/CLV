@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { DICTIONARY, Lang } from './dict';
@@ -11,25 +11,21 @@ interface I18nContextProps {
 const I18nContext = createContext<I18nContextProps | undefined>(undefined);
 
 export function I18nProvider({ lang, children }: { lang: string; children: ReactNode }) {
-  const currentLang: Lang = (lang === 'vi' || lang === 'en') ? lang : 'vi';
+  const currentLang: Lang = lang === 'vi' || lang === 'en' ? lang : 'vi';
 
   const t = (path: string) => {
     const keys = path.split('.');
-    let result: any = DICTIONARY[currentLang];
+    let result: unknown = DICTIONARY[currentLang];
     for (const key of keys) {
-      if (result[key] === undefined) {
+      if (!result || typeof result !== 'object' || !(key in result)) {
         return path; // fallback: return the raw key path
       }
-      result = result[key];
+      result = (result as Record<string, unknown>)[key];
     }
     return result as string;
   };
 
-  return (
-    <I18nContext.Provider value={{ lang: currentLang, t }}>
-      {children}
-    </I18nContext.Provider>
-  );
+  return <I18nContext.Provider value={{ lang: currentLang, t }}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {

@@ -38,14 +38,15 @@ src/
   lib/
     db.ts               # PrismaClient singleton (duy nhất)
     logger.ts           # Winston hoặc pino logger
-    config.ts           # Đọc env vars, validate bằng Zod
     env.ts              # z.object() schema cho env
     llm.ts              # LlmClient interface + OpenAI implementation
+    integrations/
+      telegram.ts       # Optional outbound alerts
   modules/
     freebies/           # CRUD, status lifecycle, query
     ingestion/          # Collector, source runner
     analyzer/           # Prompt builder, LLM call, output validator
-    scoring/            # Rule-based scoring, rescore
+    scoring/            # engine.ts = pure rules, service.ts = adapter, batch.ts = runner
     policy/             # Tier classification, execution eligibility
     execution/          # Browser automation (Phase 8+)
     agents/             # Orchestration (Phase 9+)
@@ -93,6 +94,11 @@ tests/
 - Luôn validate LLM output bằng Zod trước khi dùng.
 - Luôn lưu `analysisVersion` khi lưu kết quả analyzer.
 - Có retry + backoff khi LLM call thất bại.
+
+### Integrations
+
+- Tích hợp outbound với dịch vụ ngoài (ví dụ Telegram) đặt trong `src/lib/integrations/`.
+- Biến env optional cho integrations phải được khai báo ở `lib/env.ts` và `.env.example`.
 
 ### API Routes (Next.js)
 

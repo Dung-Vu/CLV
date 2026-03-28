@@ -68,3 +68,7 @@ export async function countByStatus(status: string): Promise<number> {
 export async function getEstimatedClaimableValue() {
   return freebiesRepository.getEstimatedClaimableValue();
 }
+
+export async function countEligibleAnalyzed() {
+  return freebiesRepository.countEligibleAnalyzed();
+}

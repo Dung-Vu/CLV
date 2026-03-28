@@ -1,12 +1,14 @@
+import type { DealCategory, FrictionLevel, RiskLevel } from '@/types';
+
 export interface ScoringInput {
   eligibleVn: boolean;
-  riskLevel: 'low' | 'medium' | 'high' | 'unknown';
+  riskLevel: RiskLevel;
   cardRequired: boolean;
   kycRequired: boolean;
-  frictionLevel: 'low' | 'medium' | 'high' | 'unknown';
+  frictionLevel: FrictionLevel;
   valueUsd: number | null;
   expiry: string | null;  // YYYY-MM-DD
-  category: string;
+  category: DealCategory | string;
   isDeal: boolean;
 }
 

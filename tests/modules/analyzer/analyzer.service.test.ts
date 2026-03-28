@@ -35,6 +35,7 @@ const mockLlmOutput = JSON.stringify({
   kyc_required: false,
   friction_level: 'low',
   tier_hint: 'A',
+  is_deal: true,
 });
 
 describe('analyzeFreebieOnce', () => {
@@ -61,7 +62,7 @@ describe('analyzeFreebieOnce', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'analyzed',
-          score: 78,
+          score: 90,
           tier: 'A',
           eligibleVn: true,
         }),
