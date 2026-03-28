@@ -53,6 +53,14 @@ export const WEIGHTS = {
 } as const;
 
 export function scoreFreebie(input: ScoringInput): ScoringResult {
+  if (input.isDeal === false) {
+    return {
+      score: 0,
+      breakdown: { isDeal: WEIGHTS.NOT_A_DEAL },
+      explanation: ['Not a deal — content only'],
+    };
+  }
+
   let totalScore = 0;
   const breakdown: Record<string, number> = {};
   const explanation: string[] = [];
@@ -63,11 +71,6 @@ export function scoreFreebie(input: ScoringInput): ScoringResult {
     breakdown[ruleName] = points;
     explanation.push(msg);
   };
-
-  // 0. Base Check
-  if (!input.isDeal) {
-    addScore('isDeal', WEIGHTS.NOT_A_DEAL, 'Không phải Deal/Ưu đãi hợp lệ (-100)');
-  }
 
   // 1. VN Eligibility
   if (input.eligibleVn) {

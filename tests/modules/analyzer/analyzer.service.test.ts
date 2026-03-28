@@ -36,6 +36,24 @@ const mockLlmOutput = JSON.stringify({
   friction_level: 'low',
   tier_hint: 'A',
   is_deal: true,
+  deal_evidence: 'Free trial 3 thang Pro cho tai khoan moi',
+});
+
+const mockNonDealOutput = JSON.stringify({
+  value_usd: 100,
+  expiry: null,
+  eligible_vn: true,
+  risk_level: 'low',
+  category: 'ai-tool',
+  score: 70,
+  summary_vi: 'Bai viet huong dan su dung mot AI tool.',
+  steps: ['Doc bai viet'],
+  card_required: false,
+  kyc_required: false,
+  friction_level: 'low',
+  tier_hint: 'A',
+  is_deal: true,
+  deal_evidence: '',
 });
 
 describe('analyzeFreebieOnce', () => {
@@ -86,6 +104,31 @@ describe('analyzeFreebieOnce', () => {
     expect(result).toBe(false);
     expect(prisma.freebie.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'analysis_error' } }),
+    );
+  });
+
+  it('forces score 0 and tier C when no concrete deal evidence exists', async () => {
+    const { prisma } = await import('@/lib/db');
+    vi.mocked(prisma.freebie.findUnique).mockResolvedValue(mockFreebie as never);
+    vi.mocked(prisma.freebie.update).mockResolvedValue({ ...mockFreebie, status: 'analyzed' } as never);
+
+    const mockClient: LlmClient = {
+      chat: vi.fn().mockResolvedValue({ content: mockNonDealOutput, model: 'test' }),
+    };
+    setLlmClient(mockClient);
+
+    const { analyzeFreebieOnce } = await import('@/modules/analyzer/analyzer.service');
+    const result = await analyzeFreebieOnce('cld123');
+
+    expect(result).toBe(true);
+    expect(prisma.freebie.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          score: 0,
+          tier: 'C',
+          status: 'analyzed',
+        }),
+      }),
     );
   });
 });

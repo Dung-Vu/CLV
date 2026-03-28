@@ -18,7 +18,8 @@
     "analyzer:once": "tsx src/jobs/analyzer.job.ts",
     "execution:dry": "tsx src/scripts/run-execution.ts",
     "execution:run": "tsx src/scripts/run-execution.ts --real",
-    "agents:run": "tsx src/scripts/run-agents.ts"
+    "agents:run": "tsx src/scripts/run-agents.ts",
+    "cleanup:non-deals": "tsx src/scripts/cleanup-non-deals.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",

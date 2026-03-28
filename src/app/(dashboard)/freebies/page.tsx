@@ -13,9 +13,15 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useI18n } from '@/lib/i18n/I18nProvider';
 import type { DealCategory, FreebieStatus, RiskLevel } from '@/types';
 
-const tiers = ['ALL', 'A', 'B', 'C'];
+const tierFilters = ['AB', 'ALL', 'A', 'B', 'C'] as const;
 const categories = ['ALL', 'AI-TOOL', 'SAAS', 'CLOUD', 'VOUCHER'];
 const statuses = ['ALL', 'RAW', 'ANALYZED', 'CLAIMED', 'IGNORED'];
+const DEFAULT_CONTENT_MODE = 'DEALS_ONLY';
+const DEFAULT_TIER_FILTER = 'AB';
+const DEFAULT_STATUS_FILTER = 'ANALYZED';
+
+type TierFilter = (typeof tierFilters)[number];
+type ContentMode = 'DEALS_ONLY' | 'ALL_CONTENT';
 
 interface FreebieListItem {
   id: string;
@@ -29,6 +35,30 @@ interface FreebieListItem {
   expiry: string | Date | null;
   riskLevel: RiskLevel | string | null;
   status: FreebieStatus | string;
+  isDeal: boolean | null;
+}
+
+function normalizeContentMode(value: string | null): ContentMode {
+  return value === 'ALL_CONTENT' ? 'ALL_CONTENT' : 'DEALS_ONLY';
+}
+
+function normalizeTierFilter(value: string | null, contentMode: ContentMode): TierFilter {
+  if (value === 'AB' || value === 'ALL' || value === 'A' || value === 'B' || value === 'C') {
+    return value;
+  }
+
+  return contentMode === 'DEALS_ONLY' ? DEFAULT_TIER_FILTER : 'ALL';
+}
+
+function getTierFilterLabel(tier: TierFilter) {
+  switch (tier) {
+    case 'AB':
+      return 'A+B';
+    case 'ALL':
+      return 'SHOW ALL';
+    default:
+      return `TIER ${tier}`;
+  }
 }
 
 function FreebiesContent() {
@@ -37,14 +67,17 @@ function FreebiesContent() {
   const pathname = usePathname();
   const { t } = useI18n();
 
-  const urlTier = searchParams.get('tier') || 'ALL';
+  const urlContentMode = normalizeContentMode(searchParams.get('contentMode'));
+  const urlTier = normalizeTierFilter(searchParams.get('tier'), urlContentMode);
   const urlCategory = searchParams.get('category') || 'ALL';
-  const urlStatus = searchParams.get('status') || 'ALL';
+  const urlStatus =
+    searchParams.get('status') || (urlContentMode === 'DEALS_ONLY' ? DEFAULT_STATUS_FILTER : 'ALL');
   const urlSearch = searchParams.get('search') || '';
   const urlSort = searchParams.get('sort') || 'score';
   const urlPage = parseInt(searchParams.get('page') || '1', 10);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [contentMode, setContentMode] = useState<ContentMode>(urlContentMode);
 
   const [activeTier, setActiveTier] = useState(urlTier);
   const [activeCategory, setActiveCategory] = useState(urlCategory);
@@ -66,7 +99,9 @@ function FreebiesContent() {
       setLoading(true);
       try {
         const queryParams = new URLSearchParams();
-        if (activeTier !== 'ALL') queryParams.set('tier', activeTier);
+        queryParams.set('dealsOnly', contentMode === 'DEALS_ONLY' ? 'true' : 'false');
+        if (activeTier === 'AB') queryParams.set('tiers', 'A,B');
+        else if (activeTier !== 'ALL') queryParams.set('tier', activeTier);
         if (activeCategory !== 'ALL') queryParams.set('category', activeCategory);
         if (activeStatus !== 'ALL') queryParams.set('status', activeStatus.toLowerCase());
         if (searchQuery) queryParams.set('search', searchQuery);
@@ -76,9 +111,14 @@ function FreebiesContent() {
 
         // Sync URL locally
         const urlParams = new URLSearchParams();
-        if (activeTier !== 'ALL') urlParams.set('tier', activeTier);
+        if (contentMode !== DEFAULT_CONTENT_MODE) urlParams.set('contentMode', contentMode);
+        if (activeTier !== (contentMode === 'DEALS_ONLY' ? DEFAULT_TIER_FILTER : 'ALL')) {
+          urlParams.set('tier', activeTier);
+        }
         if (activeCategory !== 'ALL') urlParams.set('category', activeCategory);
-        if (activeStatus !== 'ALL') urlParams.set('status', activeStatus);
+        if (activeStatus !== (contentMode === 'DEALS_ONLY' ? DEFAULT_STATUS_FILTER : 'ALL')) {
+          urlParams.set('status', activeStatus);
+        }
         if (searchQuery) urlParams.set('search', searchQuery);
         if (activeSort !== 'score') urlParams.set('sort', activeSort);
         if (page > 1) urlParams.set('page', page.toString());
@@ -101,7 +141,24 @@ function FreebiesContent() {
     // Quick debounce for smooth Search Inputs scaling
     const timer = setTimeout(fetchDeals, 300);
     return () => clearTimeout(timer);
-  }, [activeTier, activeCategory, activeStatus, searchQuery, activeSort, page, pathname, router]);
+  }, [
+    contentMode,
+    activeTier,
+    activeCategory,
+    activeStatus,
+    searchQuery,
+    activeSort,
+    page,
+    pathname,
+    router,
+  ]);
+
+  const setMode = (mode: ContentMode) => {
+    setContentMode(mode);
+    setActiveStatus(mode === 'DEALS_ONLY' ? DEFAULT_STATUS_FILTER : 'ALL');
+    setActiveTier(mode === 'DEALS_ONLY' ? DEFAULT_TIER_FILTER : 'ALL');
+    setPage(1);
+  };
 
   const getTierBadge = (tier: string | null): BadgeVariant => {
     switch (tier?.toUpperCase()) {
@@ -256,24 +313,45 @@ function FreebiesContent() {
 
         <div className="flex items-center gap-4 overflow-x-auto pb-3 w-full scrollbar-thin scrollbar-thumb-[var(--border-subtle)]">
           <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-mono text-[var(--text-dim)] uppercase">MODE</span>
+            <div className="flex gap-1 bg-[var(--bg-surface)] p-1 rounded border border-[var(--border-subtle)]">
+              {(['DEALS_ONLY', 'ALL_CONTENT'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setMode(mode)}
+                  className={`px-3 py-1 font-mono text-[10px] rounded transition-colors ${
+                    contentMode === mode
+                      ? mode === 'DEALS_ONLY'
+                        ? 'bg-[rgba(0,255,136,0.1)] text-[var(--accent-green)] border border-[rgba(0,255,136,0.3)]'
+                        : 'bg-[rgba(255,68,68,0.1)] text-[var(--accent-red)] border border-[rgba(255,68,68,0.3)]'
+                      : 'text-[var(--text-muted)] border border-transparent hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {mode === 'DEALS_ONLY' ? 'DEALS ONLY' : 'ALL CONTENT'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs font-mono text-[var(--text-dim)] uppercase">
               {t('freebies.tiers')}
             </span>
             <div className="flex gap-1 bg-[var(--bg-surface)] p-1 rounded border border-[var(--border-subtle)]">
-              {tiers.map((t) => (
+              {tierFilters.map((tierFilter) => (
                 <button
-                  key={t}
+                  key={tierFilter}
                   onClick={() => {
-                    setActiveTier(t);
+                    setActiveTier(tierFilter);
                     setPage(1);
                   }}
                   className={`px-3 py-1 font-mono text-[10px] rounded transition-colors ${
-                    activeTier === t
+                    activeTier === tierFilter
                       ? 'bg-[rgba(0,255,136,0.1)] text-[var(--accent-green)] border border-[rgba(0,255,136,0.3)] shadow-[0_0_10px_rgba(0,255,136,0.1)]'
                       : 'text-[var(--text-muted)] border border-transparent hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  {t === 'ALL' ? 'ALL' : `TIER ${t}`}
+                  {getTierFilterLabel(tierFilter)}
                 </button>
               ))}
             </div>
@@ -371,9 +449,10 @@ function FreebiesContent() {
         {deals.length === 0 && !loading ? (
           <EmptyNoResults
             onClearFilters={() => {
-              setActiveTier('ALL');
+              setContentMode(DEFAULT_CONTENT_MODE);
+              setActiveTier(DEFAULT_TIER_FILTER);
               setActiveCategory('ALL');
-              setActiveStatus('ALL');
+              setActiveStatus(DEFAULT_STATUS_FILTER);
               setSearchQuery('');
               setActiveSort('score');
               setPage(1);
@@ -461,6 +540,9 @@ function FreebiesContent() {
                             <Badge variant="category">
                               {deal.category || t('freebies.unknown')}
                             </Badge>
+                            {contentMode === 'ALL_CONTENT' && deal.isDeal === false && (
+                              <Badge variant="danger">NOT A DEAL</Badge>
+                            )}
                             {deal.status === 'claimed' && <Badge variant="success">CLAIMED</Badge>}
                           </div>
 

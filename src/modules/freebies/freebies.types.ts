@@ -5,10 +5,12 @@ export interface FreebieFilters {
   minScore?: number;
   category?: DealCategory | string;
   tier?: DealTier;
+  tiers?: DealTier[];
   search?: string;
   sort?: string;
   page?: number;
   pageSize?: number;
+  dealsOnly?: boolean;
 }
 
 export interface FreebieListResult {
@@ -36,6 +38,7 @@ export interface FreebieRow {
   frictionLevel: string;
   expiry: Date | null;
   summaryVi: string | null;
+  isDeal: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 }

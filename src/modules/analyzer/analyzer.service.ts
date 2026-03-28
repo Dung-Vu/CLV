@@ -70,6 +70,8 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
     const validated = analyzerOutputSchema.parse(parsed);
     const riskLevel: AnalyzerRiskLevel = validated.risk_level;
     const frictionLevel: AnalyzerFrictionLevel = validated.friction_level;
+    const dealEvidence = validated.deal_evidence.trim();
+    const isDeal = validated.is_deal && dealEvidence.length > 0;
 
     // Apply strict deterministic scoring and policy classification
     const engineResult = scoreFreebie({
@@ -81,18 +83,21 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
       valueUsd: validated.value_usd ?? null,
       expiry: validated.expiry || null,
       category: validated.category || 'unknown',
-      isDeal: !!validated.is_deal,
+      isDeal,
     });
 
-    const finalTier = classifyTier({
-      eligibleVn: !!validated.eligible_vn,
-      riskLevel,
-      cardRequired: !!validated.card_required,
-      kycRequired: !!validated.kyc_required,
-      frictionLevel,
-      isDeal: !!validated.is_deal,
-      score: engineResult.score,
-    });
+    const finalScore = isDeal ? engineResult.score : 0;
+    const finalTier = isDeal
+      ? classifyTier({
+          eligibleVn: !!validated.eligible_vn,
+          riskLevel,
+          cardRequired: !!validated.card_required,
+          kycRequired: !!validated.kyc_required,
+          frictionLevel,
+          isDeal,
+          score: finalScore,
+        })
+      : 'C';
 
     await updateAnalysis(freebieId, {
       valueUsd: validated.value_usd,
@@ -100,7 +105,7 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
       eligibleVn: validated.eligible_vn,
       riskLevel: validated.risk_level,
       category: validated.category,
-      score: engineResult.score,
+      score: finalScore,
       tier: finalTier,
       summaryVi: validated.summary_vi,
       stepsJson: JSON.stringify(validated.steps),
@@ -113,11 +118,13 @@ export async function analyzeFreebieOnce(freebieId: string): Promise<boolean> {
 
     logger.info('Freebie analyzed by AI & Engine', {
       freebieId,
-      score: engineResult.score,
+      score: finalScore,
       tier: finalTier,
       llmScoreHint: validated.score,
       llmTierHint: validated.tier_hint,
       eligibleVn: validated.eligible_vn,
+      isDeal,
+      dealEvidence,
     });
 
     return true;

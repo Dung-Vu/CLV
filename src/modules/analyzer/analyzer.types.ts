@@ -41,6 +41,7 @@ export const analyzerOutputSchema = z.object({
   friction_level: analyzerFrictionLevelSchema,
   tier_hint: z.enum(['A', 'B', 'C']),
   is_deal: z.boolean(),
+  deal_evidence: z.string(),
 });
 
 export type AnalyzerOutput = z.infer<typeof analyzerOutputSchema>;

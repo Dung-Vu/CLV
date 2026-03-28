@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import type { FreebieStatus } from '@/types';
 import type {
@@ -38,24 +39,60 @@ export const freebiesRepository = {
   },
 
   async findMany(filters: FreebieFilters): Promise<FreebieListResult> {
-    const { status, minScore, category, tier, search, sort = 'score', page = 1, pageSize = 20 } = filters;
+    const {
+      status,
+      minScore,
+      category,
+      tier,
+      tiers,
+      search,
+      sort = 'score',
+      page = 1,
+      pageSize = 20,
+      dealsOnly = true,
+    } = filters;
     const skip = (page - 1) * pageSize;
 
-    const where = {
-      ...(status && {
+    const whereClauses: Prisma.FreebieWhereInput[] = [];
+
+    if (dealsOnly) {
+      whereClauses.push({ score: { gt: 0 } });
+      whereClauses.push({ tier: { not: null } });
+    }
+
+    if (status) {
+      whereClauses.push({
         status: Array.isArray(status) ? { in: status } : status,
-      }),
-      ...(minScore !== undefined && { score: { gte: minScore } }),
-      ...(category && { category }),
-      ...(tier && { tier }),
-      ...(search && {
+      });
+    }
+
+    if (minScore !== undefined) {
+      whereClauses.push({ score: { gte: minScore } });
+    }
+
+    if (category) {
+      whereClauses.push({ category });
+    }
+
+    if (tier) {
+      whereClauses.push({ tier });
+    }
+
+    if (tiers && tiers.length > 0) {
+      whereClauses.push({ tier: { in: tiers } });
+    }
+
+    if (search) {
+      whereClauses.push({
         OR: [
-          { title: { contains: search, mode: 'insensitive' as const } },
-          { source: { contains: search, mode: 'insensitive' as const } },
-          { summaryVi: { contains: search, mode: 'insensitive' as const } },
+          { title: { contains: search, mode: 'insensitive' } },
+          { source: { contains: search, mode: 'insensitive' } },
+          { summaryVi: { contains: search, mode: 'insensitive' } },
         ],
-      }),
-    };
+      });
+    }
+
+    const where: Prisma.FreebieWhereInput = whereClauses.length > 0 ? { AND: whereClauses } : {};
 
     const [items, total] = await prisma.$transaction([
       prisma.freebie.findMany({
@@ -67,7 +104,15 @@ export const freebiesRepository = {
       prisma.freebie.count({ where }),
     ]);
 
-    return { items, total, page, pageSize };
+    return {
+      items: items.map((item) => ({
+        ...item,
+        isDeal: item.status === 'analyzed' ? item.score > 0 && item.tier !== null : null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   },
 
   async updateStatus(id: string, status: FreebieStatus) {
@@ -144,6 +189,42 @@ export const freebiesRepository = {
   async countEligibleAnalyzed() {
     return prisma.freebie.count({
       where: { status: 'analyzed', eligibleVn: true },
+    });
+  },
+
+  async cleanupAnalyzedNonDeals(note: string) {
+    return prisma.$transaction(async (tx) => {
+      const candidates = await tx.freebie.findMany({
+        where: { status: 'analyzed', score: 0 },
+        select: { id: true },
+      });
+
+      if (candidates.length === 0) {
+        return { cleaned: 0 };
+      }
+
+      const candidateIds = candidates.map((candidate) => candidate.id);
+      const updated = await tx.freebie.updateMany({
+        where: {
+          id: { in: candidateIds },
+          status: 'analyzed',
+          score: 0,
+        },
+        data: { status: 'ignored' },
+      });
+
+      if (updated.count > 0) {
+        await tx.claimLog.createMany({
+          data: candidateIds.map((freebieId) => ({
+            freebieId,
+            status: 'skipped',
+            mode: 'manual',
+            note,
+          })),
+        });
+      }
+
+      return { cleaned: updated.count };
     });
   },
 };

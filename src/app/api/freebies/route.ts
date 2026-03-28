@@ -10,6 +10,11 @@ const querySchema = z.object({
   minScore: z.coerce.number().optional(),
   category: z.string().optional(),
   tier: z.enum(['A', 'B', 'C']).optional(),
+  tiers: z.string().optional(),
+  dealsOnly: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
   search: z.string().optional(),
   sort: z.enum(['score', 'createdAt', 'valueUsd']).optional(),
   page: z.coerce.number().int().positive().default(1),
@@ -26,7 +31,15 @@ export async function GET(req: NextRequest) {
         { status: 400 },
       );
     }
-    const result = await listFreebies(query.data);
+    const tiers = query.data.tiers
+      ?.split(',')
+      .map((value) => value.trim().toUpperCase())
+      .filter((value): value is 'A' | 'B' | 'C' => ['A', 'B', 'C'].includes(value));
+
+    const result = await listFreebies({
+      ...query.data,
+      tiers: tiers && tiers.length > 0 ? tiers : undefined,
+    });
     return NextResponse.json(result);
   } catch (err) {
     logger.error('GET /api/freebies error', { error: err instanceof Error ? err.message : err });

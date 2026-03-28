@@ -21,7 +21,10 @@ export async function getFreebieById(id: string) {
 }
 
 export async function listFreebies(filters: FreebieFilters) {
-  return freebiesRepository.findMany(filters);
+  return freebiesRepository.findMany({
+    dealsOnly: true,
+    ...filters,
+  });
 }
 
 export async function markClaimed(freebieId: string, note?: string) {
@@ -71,4 +74,11 @@ export async function getEstimatedClaimableValue() {
 
 export async function countEligibleAnalyzed() {
   return freebiesRepository.countEligibleAnalyzed();
+}
+
+export async function cleanupAnalyzedNonDeals(note = 'Auto-cleanup: not a deal') {
+  logger.info('Cleaning up analyzed non-deals', { note });
+  const result = await freebiesRepository.cleanupAnalyzedNonDeals(note);
+  logger.info('Analyzed non-deal cleanup complete', { cleaned: result.cleaned });
+  return result;
 }
