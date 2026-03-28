@@ -118,8 +118,8 @@ export async function runAllAgents(
 
 export async function getRecentAgentRuns(limit = 10) {
   return prisma.agentRunLog.findMany({
-    orderBy: { runAt: 'desc' },
+    orderBy: { startedAt: 'desc' },
     take: limit,
-    select: { agentName: true, runAt: true, actions: true, status: true, finishedAt: true },
+    select: { agentName: true, startedAt: true, actions: true, status: true, finishedAt: true },
   });
 }

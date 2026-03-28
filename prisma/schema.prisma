@@ -72,7 +72,6 @@ model ClaimLog {
   errorMsg    String?
   startedAt   DateTime? // set at the start of each attempt
   finishedAt  DateTime? // set when attempt completes (success or failure)
-  executedAt  DateTime  @default(now()) // legacy — creation timestamp
   createdAt   DateTime  @default(now())
 
   @@index([freebieId])
@@ -88,10 +87,9 @@ model AgentRunLog {
   error       String?   // set when status=error
   startedAt   DateTime  @default(now())
   finishedAt  DateTime? // set when run completes
-  runAt       DateTime  @default(now()) // legacy — kept for existing queries
 
   @@index([agentName])
-  @@index([runAt])
+  @@index([startedAt])
   @@index([status])
 }
 
