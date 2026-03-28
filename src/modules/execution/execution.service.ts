@@ -1,12 +1,15 @@
 import { chromium } from 'playwright';
 
+import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { createClaimLog } from '@/modules/claimlogs/claimlogs.service';
 import { freebiesRepository } from '@/modules/freebies/freebies.repository';
 import { classifyTier, evaluateExecutionPolicy } from '@/modules/policy/policy.service';
 import { runSignupFlow } from './drivers/playwright.driver';
-import type { ExecutionMode, ExecutionResult, FreebieForExecution } from './execution.types';
+import { executePlan } from './execution.executor';
+import { buildExecutionPlan } from './execution.planner';
+import type { ExecutionMode, ExecutionResult, ExecutorResult, FreebieForExecution } from './execution.types';
 
 /**
  * Returns freebies that are classified as Tier A.
@@ -177,5 +180,99 @@ export async function executeFreebie(
     appMode: env.APP_MODE,
     durationMs: finishedAt.getTime() - startedAt.getTime(),
   });
+  return result;
+}
+
+/**
+ * Full plan-based execution workflow — creates ClaimLog, runs executePlan, updates DB.
+ * Used by the API route POST /api/freebies/[id]/execute.
+ */
+export async function executeFreebieById(freebieId: string): Promise<ExecutorResult> {
+  // ── 1. Load freebie ───────────────────────────────────────────────────
+  const freebie = await freebiesRepository.findById(freebieId);
+  if (!freebie) throw new Error(`Freebie not found: ${freebieId}`);
+
+  // ── 2. Policy gate ────────────────────────────────────────────────────
+  const tier = freebie.tier ?? classifyTier({
+    eligibleVn: freebie.eligibleVn,
+    riskLevel: freebie.riskLevel as 'low' | 'medium' | 'high' | 'unknown',
+    cardRequired: freebie.cardRequired,
+    kycRequired: freebie.kycRequired,
+    frictionLevel: freebie.frictionLevel as 'low' | 'medium' | 'high' | 'unknown',
+    score: freebie.score,
+  });
+
+  const policy = evaluateExecutionPolicy(
+    {
+      eligibleVn: freebie.eligibleVn,
+      riskLevel: freebie.riskLevel as 'low' | 'medium' | 'high' | 'unknown',
+      cardRequired: freebie.cardRequired,
+      kycRequired: freebie.kycRequired,
+      frictionLevel: freebie.frictionLevel as 'low' | 'medium' | 'high' | 'unknown',
+      score: freebie.score,
+      tier,
+    },
+    env.APP_MODE,
+    env.AUTO_CLAIM_ENABLED,
+  );
+
+  if (policy.recommendation === 'ignore' || policy.recommendation === 'consider_manual') {
+    throw new Error(
+      `Execution blocked by policy: recommendation=${policy.recommendation} (tier=${tier})`,
+    );
+  }
+
+  // ── 3. Build plan ─────────────────────────────────────────────────────
+  const plan = buildExecutionPlan(freebie);
+
+  // ── 4. Create initial ClaimLog ────────────────────────────────────────
+  const startedAt = new Date();
+  const claimLog = await createClaimLog({
+    freebieId,
+    status: 'dry_run',
+    mode: 'semi_auto',
+    startedAt,
+  });
+
+  // ── 5. Run plan ───────────────────────────────────────────────────────
+  let result: ExecutorResult;
+  try {
+    result = await executePlan(plan);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    await prisma.claimLog.update({
+      where: { id: claimLog.id },
+      data: { status: 'failed', finishedAt: new Date(), errorMsg },
+    });
+    throw err;
+  }
+
+  // ── 6. Update ClaimLog ────────────────────────────────────────────────
+  await prisma.claimLog.update({
+    where: { id: claimLog.id },
+    data: {
+      status: result.success ? 'success' : 'failed',
+      finishedAt: new Date(),
+      errorMsg: result.error ?? null,
+      evidenceUrl: result.evidencePaths[0] ?? null,
+    },
+  });
+
+  // ── 7. Mark freebie claimed on success ────────────────────────────────
+  if (result.success && result.mode === 'real') {
+    await prisma.freebie.update({
+      where: { id: freebieId },
+      data: { status: 'claimed' },
+    });
+  }
+
+  logger.info('executeFreebieById finished', {
+    freebieId,
+    success: result.success,
+    mode: result.mode,
+    stepsCompleted: result.stepsCompleted,
+    duration: result.duration,
+  });
+
   return result;
 }

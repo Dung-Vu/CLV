@@ -12,6 +12,10 @@ export async function createRawFreebie(input: CreateRawFreebieInput) {
   return freebie;
 }
 
+export async function freebieExistsByUrl(url: string) {
+  return freebiesRepository.exists(url);
+}
+
 export async function findPendingRaw(limit = 10) {
   return freebiesRepository.findByStatus('raw', limit);
 }

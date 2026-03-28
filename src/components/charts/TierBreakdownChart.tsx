@@ -1,31 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { ChartSkeleton } from './ChartSkeleton';
 
 export function TierBreakdownChart({
   data,
 }: {
   data: { name: string; value: number; fill: string }[];
 }) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return (
-      <div className="w-full h-48 mt-4 font-mono text-xs relative flex items-center justify-center">
-        <ChartSkeleton />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full h-48 mt-4 font-mono text-xs relative flex items-center justify-center">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
+    <div className="w-full mt-4 font-mono text-xs relative" style={{ height: 192 }}>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col" style={{ zIndex: 1 }}>
         <span className="text-xl font-light text-[var(--text-primary)] leading-none">
           {data.reduce((acc, curr) => acc + curr.value, 0)}
         </span>
@@ -34,7 +18,7 @@ export function TierBreakdownChart({
         </span>
       </div>
 
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={192}>
         <PieChart>
           <Pie
             data={data}

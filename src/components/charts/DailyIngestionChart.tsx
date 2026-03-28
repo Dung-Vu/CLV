@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -10,26 +9,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { ChartSkeleton } from './ChartSkeleton';
 
 export function DailyIngestionChart({ data }: { data: { name: string; count: number }[] }) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return (
-      <div className="w-full h-48 mt-4 font-mono text-xs">
-        <ChartSkeleton />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full h-48 mt-4 font-mono text-xs">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full mt-4 font-mono text-xs">
+      <ResponsiveContainer width="100%" height={192}>
         <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">

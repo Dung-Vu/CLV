@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,10 +14,20 @@ import {
 import { ChartSkeleton } from './ChartSkeleton';
 
 export function ScoreDistributionChart({ data }: { data: { range: string; count: number }[] }) {
-  const [isMounted, setIsMounted] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsMounted(true);
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      // Recharts needs > 0 dimensions to prevent the width(-1)/height(-1) warning
+      if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+        setIsVisible(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, []);
 
   const getFillColor = (range: string) => {
@@ -37,17 +47,9 @@ export function ScoreDistributionChart({ data }: { data: { range: string; count:
     }
   };
 
-  if (!isMounted) {
-    return (
-      <div className="w-full h-48 mt-4 font-mono text-xs">
-        <ChartSkeleton />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full h-48 mt-4 font-mono text-xs">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full mt-4 font-mono text-xs">
+      <ResponsiveContainer width="100%" height={192}>
         <BarChart
           data={data}
           margin={{ top: 5, right: 10, left: -20, bottom: 0 }}

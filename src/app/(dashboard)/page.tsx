@@ -6,6 +6,7 @@ import { ScoreDistributionChart } from "@/components/charts/ScoreDistributionCha
 import { TierBreakdownChart } from "@/components/charts/TierBreakdownChart";
 import { DailyIngestionChart } from "@/components/charts/DailyIngestionChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { PipelineWidget } from "@/components/dashboard/PipelineWidget";
 import { EmptyNoFreebies } from "@/components/ui/EmptyState";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
@@ -98,6 +99,18 @@ export default async function CommandCenter() {
     fill: t.tier === 'A' ? 'var(--accent-green)' : t.tier === 'B' ? 'var(--accent-yellow)' : 'var(--accent-red)'
   }));
 
+  const pipelineRaw = await prisma.freebie.groupBy({
+    by: ['status'],
+    _count: { id: true }
+  });
+  const pipelineStats = { raw: 0, analyzed: 0, ignored: 0, error: 0, claimed: 0 };
+  pipelineRaw.forEach(row => {
+    const statusKey = row.status as keyof typeof pipelineStats;
+    if (statusKey in pipelineStats) {
+      pipelineStats[statusKey] = row._count.id;
+    }
+  });
+
   const last7Days = new Date();
   last7Days.setDate(last7Days.getDate() - 7);
   const dailyRaw = await prisma.freebie.findMany({
@@ -177,6 +190,11 @@ export default async function CommandCenter() {
         ))}
       </section>
 
+      {/* PANEL 3: PIPELINE STATUS */}
+      <section>
+        <PipelineWidget pipeline={pipelineStats} />
+      </section>
+
       {/* PANEL 5: DATA VISUALIZATION */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <TerminalCard title={t('detail.scoreBreakdown')} borderColor="var(--text-dim)">
@@ -233,7 +251,7 @@ export default async function CommandCenter() {
         </div>
 
         {/* PANEL 4: QUICK ACTIONS (40%) */}
-        <div className="lg:col-span-5 flex flex-col h-fit">
+        <div id="quick-actions-panel" className="lg:col-span-5 flex flex-col h-fit">
           <TerminalCard title={t('dashboard.actions')} borderColor="var(--accent-blue)">
             <QuickActions />
           </TerminalCard>

@@ -61,6 +61,23 @@ function getTierFilterLabel(tier: TierFilter) {
   }
 }
 
+function stripHtml(html: string | null): string {
+  if (!html) return '';
+  // Convert basic HTML entities back to text
+  const unescaped = html
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  // Strip comments and tags
+  return unescaped
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]*>?/gm, '')
+    .trim();
+}
+
 function FreebiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -102,7 +119,7 @@ function FreebiesContent() {
         queryParams.set('dealsOnly', contentMode === 'DEALS_ONLY' ? 'true' : 'false');
         if (activeTier === 'AB') queryParams.set('tiers', 'A,B');
         else if (activeTier !== 'ALL') queryParams.set('tier', activeTier);
-        if (activeCategory !== 'ALL') queryParams.set('category', activeCategory);
+        if (activeCategory !== 'ALL') queryParams.set('category', activeCategory.toLowerCase());
         if (activeStatus !== 'ALL') queryParams.set('status', activeStatus.toLowerCase());
         if (searchQuery) queryParams.set('search', searchQuery);
         queryParams.set('sort', activeSort);
@@ -548,7 +565,7 @@ function FreebiesContent() {
 
                           <p className="text-xs text-[var(--text-muted)] line-clamp-3 leading-relaxed flex-1 mt-1">
                             {deal.summaryVi ||
-                              deal.description ||
+                              stripHtml(deal.description) ||
                               'Chưa cung cấp dữ liệu phân tích cụ thể.'}
                           </p>
 

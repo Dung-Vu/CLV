@@ -20,11 +20,22 @@ export const SOURCES: SourceConfig[] = [
     name: 'Hacker News',
     kind: 'rss',
     url: 'https://news.ycombinator.com/rss',
-    enabled: true,
+    enabled: false,
     priority: 'medium',
     trustLevel: 'medium',
     tags: ['dev', 'ai', 'saas', 'launch'],
     notes: 'Good for dev tools and AI launches, needs strong scoring to filter noise',
+  },
+  {
+    id: 'hn-filtered-rss',
+    name: 'Hacker News — Deals & Launches',
+    kind: 'rss',
+    url: 'https://hnrss.org/newest?q=free+trial+OR+free+tier+OR+launch+OR+giveaway&points=30',
+    enabled: true,
+    priority: 'medium',
+    trustLevel: 'medium',
+    tags: ['dev', 'ai', 'saas', 'launch'],
+    notes: 'HN filtered by deal keywords, min 30 points'
   },
   {
     id: 'producthunt-rss',

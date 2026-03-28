@@ -21,6 +21,7 @@ export interface IngestionResult {
   fetched: number;
   created: number;
   skipped: number;
+  filteredOut: number;
   errors: number;
   durationMs: number;
 }

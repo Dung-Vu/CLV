@@ -48,6 +48,9 @@ export interface CreateRawFreebieInput {
   source: string;
   url: string;
   description?: string;
+  publishedAt?: Date | null;
+  status?: FreebieStatus;
+  note?: string;
 }
 
 export interface UpdateAnalysisInput {

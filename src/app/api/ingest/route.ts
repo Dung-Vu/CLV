@@ -11,9 +11,11 @@ export async function POST() {
         sources: acc.sources + 1,
         fetched: acc.fetched + r.fetched,
         created: acc.created + r.created,
+        filteredOut: acc.filteredOut + r.filteredOut,
+        skipped: acc.skipped + r.skipped,
         errors: acc.errors + r.errors,
       }),
-      { sources: 0, fetched: 0, created: 0, errors: 0 },
+      { sources: 0, fetched: 0, created: 0, filteredOut: 0, skipped: 0, errors: 0 },
     );
     return NextResponse.json({ success: true, summary });
   } catch (err) {

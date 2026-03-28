@@ -107,6 +107,23 @@ export function SourcesClient({ initialSources }: { initialSources: SourceWithCo
       </div>
 
       <div className="grid grid-cols-1 gap-4">
+        {sources.length === 0 && (
+          <TerminalCard borderColor="var(--border-subtle)">
+            <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
+              <div className="font-mono text-4xl text-[var(--text-dim)]">[ ]</div>
+              <div className="font-mono text-sm text-[var(--text-muted)] uppercase tracking-widest">
+                &gt; NO SOURCES CONFIGURED_
+              </div>
+              <p className="text-xs text-[var(--text-dim)] max-w-md">
+                Run{' '}
+                <code className="bg-black/40 px-2 py-0.5 rounded text-[var(--accent-green)]">
+                  npm run db:seed
+                </code>{' '}
+                to load default sources from the registry.
+              </p>
+            </div>
+          </TerminalCard>
+        )}
         {sources.map((source) => (
           <TerminalCard
             key={source.id}

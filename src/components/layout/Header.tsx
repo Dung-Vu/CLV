@@ -10,7 +10,12 @@ export function Header() {
   const { t } = useI18n();
   const paths = pathname.split("/").filter(Boolean);
   
-  const [stats, setStats] = useState({ total: 0, new: 0, tierA: 0 });
+  const [stats, setStats] = useState({ 
+    total: 0, 
+    new: 0, 
+    tierA: 0, 
+    pipeline: { raw: 0, analyzed: 0, ignored: 0, claimed: 0, error: 0 } 
+  });
 
   useEffect(() => {
     fetch('/api/stats/header')
@@ -51,6 +56,15 @@ export function Header() {
           <span className="text-[var(--accent-green)]">{stats.new} {t('header.new')}</span>
           <span className="text-[var(--text-dim)]">·</span>
           <span className="text-[var(--accent-red)]">{stats.tierA} {t('header.tierA')}</span>
+          
+          {(stats.pipeline?.raw > 0) && (
+            <>
+              <span className="text-[var(--text-dim)]">·</span>
+              <span className="bg-[var(--accent-yellow)] text-black px-1.5 py-0.5 rounded-sm font-bold animate-pulse">
+                {stats.pipeline.raw} CHỜ XỬ LÝ
+              </span>
+            </>
+          )}
         </div>
         
         <div className="flex items-center gap-3">

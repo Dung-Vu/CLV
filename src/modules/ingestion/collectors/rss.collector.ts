@@ -14,7 +14,7 @@ export const rssCollector: Collector = {
   id: 'rss-collector',
 
   supports(source: SourceConfig): boolean {
-    return source.kind === 'rss';
+    return source.kind === 'rss' || source.kind === 'reddit';
   },
 
   async ingest(source: SourceConfig): Promise<RawItem[]> {
@@ -25,10 +25,13 @@ export const rssCollector: Collector = {
       try {
         const url = item.link ?? item.guid ?? '';
         if (!url) continue;
+        const rawContent = item.content ?? (item as any)['content:encoded'] ?? item.contentSnippet ?? item.summary ?? '';
+        const truncatedContent = rawContent.length > 800 ? rawContent.slice(0, 800) + '...' : rawContent;
+
         items.push({
           title: item.title?.trim() ?? 'Untitled',
           url,
-          description: item.contentSnippet ?? item.content ?? item.summary ?? undefined,
+          description: truncatedContent || undefined,
           sourceId: source.id,
           sourceName: source.name,
           publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,

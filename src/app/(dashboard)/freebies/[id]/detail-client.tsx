@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ShieldCheck,
   RotateCcw,
+  Play,
 } from 'lucide-react';
 import { TerminalCard } from '@/components/ui/TerminalCard';
 import { ScoreBadge } from '@/components/ui/ScoreBadge';
@@ -33,6 +34,16 @@ export interface FreebieDetailView {
   stepsJson: string | null;
 }
 
+interface ExecuteResult {
+  success: boolean;
+  mode: 'dry_run' | 'real';
+  stepsCompleted: number;
+  totalSteps: number;
+  evidencePaths: string[];
+  duration: number;
+  error?: string;
+}
+
 interface FreebieDetailClientProps {
   freebie: FreebieDetailView;
   breakdown: Record<string, number>;
@@ -49,6 +60,19 @@ export function FreebieDetailClient({ freebie, breakdown, explanation }: Freebie
   const [claiming, setClaiming] = useState(false);
   const [ignoring, setIgnoring] = useState(false);
   const [rescoring, setRescoring] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [executeResult, setExecuteResult] = useState<ExecuteResult | null>(null);
+
+  const stripHtml = (html: string | null): string => {
+    if (!html) return '';
+    const unescaped = html
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    return unescaped.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>?/gm, '').trim();
+  };
 
   const handleClaim = async () => {
     setClaiming(true);
@@ -95,6 +119,42 @@ export function FreebieDetailClient({ freebie, breakdown, explanation }: Freebie
       toast({ type: 'ERROR', title: 'NETWORK ERROR', message: getErrorMessage(error) });
     } finally {
       setIgnoring(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    setExecuting(true);
+    setExecuteResult(null);
+    try {
+      const res = await fetch(`/api/freebies/${freebie.id}/execute`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setExecuteResult(data as ExecuteResult);
+        if (data.success) {
+          toast({
+            type: 'SUCCESS',
+            title: 'EXECUTION COMPLETE',
+            message: `${data.stepsCompleted}/${data.totalSteps} steps — ${data.mode.toUpperCase()}`,
+          });
+          if (data.mode === 'real') router.refresh();
+        } else {
+          toast({
+            type: 'ERROR',
+            title: 'EXECUTION FAILED',
+            message: data.error || 'Unknown error',
+          });
+        }
+      } else {
+        toast({
+          type: 'ERROR',
+          title: 'EXECUTION BLOCKED',
+          message: data.error || 'Unknown error',
+        });
+      }
+    } catch (error: unknown) {
+      toast({ type: 'ERROR', title: 'NETWORK ERROR', message: getErrorMessage(error) });
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -203,7 +263,7 @@ export function FreebieDetailClient({ freebie, breakdown, explanation }: Freebie
               </div>
 
               <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 whitespace-pre-wrap">
-                {freebie.summaryVi || freebie.description || 'No description provided.'}
+                {freebie.summaryVi || stripHtml(freebie.description) || 'No description provided.'}
               </div>
 
               <div className="mt-4">
@@ -299,26 +359,100 @@ export function FreebieDetailClient({ freebie, breakdown, explanation }: Freebie
             </div>
           </TerminalCard>
 
+          {/* EXECUTION RESULT MODAL */}
+          {executeResult && (
+            <TerminalCard
+              title={executeResult.success ? '✓ EXECUTION RESULT' : '✗ EXECUTION FAILED'}
+              borderColor={executeResult.success ? 'var(--accent-green)' : 'var(--accent-red)'}
+            >
+              <div className="flex flex-col gap-3 font-mono text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col bg-black/20 border border-[var(--border-subtle)] p-2 rounded">
+                    <span className="text-[var(--text-dim)] text-[9px] uppercase">Mode</span>
+                    <span className="text-[var(--accent-blue)] font-bold mt-0.5">
+                      {executeResult.mode.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-black/20 border border-[var(--border-subtle)] p-2 rounded">
+                    <span className="text-[var(--text-dim)] text-[9px] uppercase">Steps</span>
+                    <span className="text-[var(--accent-green)] font-bold mt-0.5">
+                      {executeResult.stepsCompleted}/{executeResult.totalSteps}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-black/20 border border-[var(--border-subtle)] p-2 rounded col-span-2">
+                    <span className="text-[var(--text-dim)] text-[9px] uppercase">Duration</span>
+                    <span className="text-[var(--text-primary)] mt-0.5">
+                      {executeResult.duration}ms
+                    </span>
+                  </div>
+                </div>
+                {executeResult.error && (
+                  <div className="p-2 bg-[rgba(255,68,68,0.1)] border border-[var(--accent-red)] rounded text-[var(--accent-red)] text-[10px] break-words">
+                    {executeResult.error}
+                  </div>
+                )}
+                {executeResult.evidencePaths.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[var(--text-dim)] uppercase text-[9px]">
+                      Evidence Screenshots
+                    </span>
+                    {executeResult.evidencePaths.map((p, i) => (
+                      <a
+                        key={i}
+                        href={p.replace(/.*\/public/, '')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[var(--accent-blue)] underline underline-offset-2 text-[10px] truncate"
+                      >
+                        [{i + 1}] {p.split(/[\\/]/).pop()}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={() => setExecuteResult(null)}
+                  className="text-[var(--text-dim)] text-[10px] uppercase hover:text-[var(--text-muted)] transition-colors mt-1"
+                >
+                  &gt; DISMISS_
+                </button>
+              </div>
+            </TerminalCard>
+          )}
+
           {/* ACTIONS */}
           <TerminalCard title="COMMAND INTERFACE" borderColor="var(--accent-yellow)">
             <div className="flex flex-col gap-3">
-              {freebie.status !== 'claimed' && (
+              {freebie.tier === 'A' && freebie.status === 'analyzed' && (
                 <ActionButton
                   variant="primary"
                   fullWidth
-                  className="py-3 justify-center mb-2 disabled:opacity-50"
-                  onClick={handleClaim}
-                  disabled={claiming || ignoring || rescoring}
+                  className="py-3 justify-center bg-[rgba(0,255,136,0.1)] border-[var(--accent-green)] text-[var(--accent-green)] hover:bg-[rgba(0,255,136,0.2)] transition-all"
+                  onClick={handleExecute}
+                  disabled={executing || claiming || ignoring || rescoring}
                 >
-                  {claiming ? (
+                  {executing ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
-                    <span className="mr-2 inline-block">✓</span>
+                    <Play className="w-4 h-4 mr-2" />
                   )}
-                  MARK AS CLAIMED
+                  {executing ? 'EXECUTING...' : '▸ EXECUTE (DRY RUN)'}
                 </ActionButton>
               )}
-
+              <ActionButton
+                variant="primary"
+                fullWidth
+                className="py-3 justify-center mb-2 disabled:opacity-50"
+                onClick={handleClaim}
+                disabled={claiming || ignoring || rescoring}
+              >
+                {claiming ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <span className="mr-2 inline-block">✓</span>
+                )}
+                MARK AS CLAIMED
+              </ActionButton>
+              )
               {freebie.status !== 'ignored' && freebie.status !== 'claimed' && (
                 <ActionButton
                   variant="danger"
@@ -335,7 +469,6 @@ export function FreebieDetailClient({ freebie, breakdown, explanation }: Freebie
                   IGNORE DEAL
                 </ActionButton>
               )}
-
               <ActionButton
                 variant="secondary"
                 fullWidth

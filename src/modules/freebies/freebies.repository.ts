@@ -9,6 +9,14 @@ import type {
 } from './freebies.types';
 
 export const freebiesRepository = {
+  async exists(url: string): Promise<boolean> {
+    const record = await prisma.freebie.findUnique({
+      where: { url },
+      select: { id: true },
+    });
+    return !!record;
+  },
+
   async create(input: CreateRawFreebieInput) {
     return prisma.freebie.upsert({
       where: { url: input.url },
@@ -18,7 +26,15 @@ export const freebiesRepository = {
         source: input.source,
         url: input.url,
         description: input.description,
-        status: 'raw',
+        status: input.status ?? 'raw',
+        publishedAt: input.publishedAt,
+        claimLogs: input.note ? {
+          create: {
+            status: 'skipped',
+            mode: 'auto',
+            note: input.note
+          }
+        } : undefined
       },
     });
   },
