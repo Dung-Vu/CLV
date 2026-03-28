@@ -20,6 +20,7 @@ export async function listEnabledSources(): Promise<SourceConfig[]> {
         trustLevel: r.trustLevel as SourceConfig['trustLevel'],
         tags: r.tags as string[],
         notes: r.notes ?? undefined,
+        searchQuery: r.searchQuery ?? undefined,
       }));
     }
   } catch {

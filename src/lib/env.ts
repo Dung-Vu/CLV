@@ -24,6 +24,7 @@ const envSchema = z.object({
     .transform((v) => v !== 'false')
     .default('true'),
   CLAIM_EMAIL: z.string().email().optional(),
+  SERPER_API_KEY: optionalTrimmedString,
   TELEGRAM_BOT_TOKEN: optionalTrimmedString,
   TELEGRAM_CHAT_ID: optionalTrimmedString,
   // Per-agent enable/disable flags (all default to enabled)

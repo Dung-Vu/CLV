@@ -24,6 +24,10 @@ export async function getFreebieById(id: string) {
   return freebiesRepository.findById(id);
 }
 
+export async function getNewTierADeals(since: Date) {
+  return freebiesRepository.findNewTierA(since);
+}
+
 export async function listFreebies(filters: FreebieFilters) {
   return freebiesRepository.findMany({
     dealsOnly: true,

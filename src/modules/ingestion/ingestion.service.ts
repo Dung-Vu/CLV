@@ -3,12 +3,13 @@ import { createRawFreebie, freebieExistsByUrl } from '@/modules/freebies/freebie
 import { listEnabledSources } from '@/modules/sources/sources.service';
 import type { SourceConfig } from '@/modules/sources/sources.config';
 import { rssCollector } from './collectors/rss.collector';
+import { searchCollector } from './collectors/search.collector';
 import { filterByKeyword } from './filters/keyword.filter';
 import type { Collector, IngestionResult } from './ingestion.types';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-const collectors: Collector[] = [rssCollector];
+const collectors: Collector[] = [rssCollector, searchCollector];
 
 function findCollector(source: SourceConfig): Collector | undefined {
   return collectors.find((c) => c.supports(source));

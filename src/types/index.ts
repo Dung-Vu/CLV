@@ -50,7 +50,7 @@ export type DealCategory =
 
 export type AppMode = 'clean' | 'grey';
 
-export type SourceKind = 'rss' | 'html' | 'official' | 'reddit' | 'twitter' | 'manual';
+export type SourceKind = 'rss' | 'html' | 'official' | 'reddit' | 'twitter' | 'manual' | 'search';
 
 export type SourcePriority = 'high' | 'medium' | 'low';
 

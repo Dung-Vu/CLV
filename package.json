@@ -20,7 +20,8 @@
     "execution:run": "tsx src/scripts/run-execution.ts --real",
     "agents:run": "tsx src/scripts/run-agents.ts",
     "cleanup:non-deals": "tsx src/scripts/cleanup-non-deals.ts",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "cron": "dotenv -e .env -- tsx src/jobs/cron.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
@@ -50,7 +51,7 @@
     "eslint-config-next": "^15.2.4",
     "prettier": "^3.5.3",
     "prisma": "^6.5.0",
-    "tsx": "^4.19.3",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.0",
     "vitest": "^3.1.1",
     "vitest-mock-extended": "^3.1.0"

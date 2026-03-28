@@ -9,6 +9,7 @@ export interface SourceConfig {
   priority: SourcePriority;
   trustLevel: SourceTrustLevel;
   tags: string[];
+  searchQuery?: string; // used when kind='search'
   notes?: string;
 }
 
@@ -239,5 +240,27 @@ export const SOURCES: SourceConfig[] = [
     trustLevel: 'low',
     tags: ['social', 'ai', 'launch'],
     notes: 'Phase 7+: early deal signals from AI founders — URL TBD, requires Twitter API v2',
+  },
+  {
+    id: 'serper-free-trial',
+    name: 'Search — Free Trial Deals',
+    kind: 'search',
+    url: '',
+    searchQuery: 'free trial SaaS 2026 no credit card',
+    enabled: true,
+    priority: 'high',
+    trustLevel: 'medium',
+    tags: ['saas', 'ai', 'search'],
+  },
+  {
+    id: 'serper-ai-free',
+    name: 'Search — AI Tool Free Tier',
+    kind: 'search',
+    url: '',
+    searchQuery: 'AI tool free tier launch 2026',
+    enabled: true,
+    priority: 'high',
+    trustLevel: 'medium',
+    tags: ['ai', 'search'],
   },
 ];

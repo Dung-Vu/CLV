@@ -39,6 +39,17 @@ export const freebiesRepository = {
     });
   },
 
+  async findNewTierA(since: Date) {
+    return prisma.freebie.findMany({
+      where: {
+        tier: 'A',
+        status: 'analyzed',
+        updatedAt: { gt: since },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  },
+
   async findById(id: string) {
     return prisma.freebie.findUnique({
       where: { id },

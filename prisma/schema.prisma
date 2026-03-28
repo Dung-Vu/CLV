@@ -101,9 +101,10 @@ model SourceConfig {
   url        String
   enabled    Boolean  @default(true)
   priority   String   @default("medium") // high | medium | low
-  trustLevel String   @default("medium") // high | medium | low
-  tags       String[] @default([])
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  trustLevel  String   @default("medium") // high | medium | low
+  tags        String[] @default([])
+  notes       String?
+  searchQuery String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
