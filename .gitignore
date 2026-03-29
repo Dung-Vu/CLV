@@ -37,3 +37,14 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/*.sql
+
+# Temp & investigation files
+tmp-*.txt
+test_*.py
+test_*.sh
+test_*.json
+testapi.py
+drama_*.json
+*_proxy.py
+*.log
+parse_*.py

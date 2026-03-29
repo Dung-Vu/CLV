@@ -12,17 +12,24 @@ const MAX_RETRIES = 3;
 async function callLlmWithRetry(input: AnalyzerInput): Promise<string> {
   const prompt = buildAnalyzerPrompt(input);
   const client = getLlmClient();
+  const TIMEOUT_MS = 15000; // 15s max per attempt
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await client.chat([{ role: 'user', content: prompt }], {
+      const chatPromise = client.chat([{ role: 'user', content: prompt }], {
         temperature: 0.1,
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`LLM timeout after ${TIMEOUT_MS}ms`)), TIMEOUT_MS);
+      });
+
+      const response = await Promise.race([chatPromise, timeoutPromise]) as any;
       return response.content;
     } catch (err) {
       if (attempt === MAX_RETRIES) throw err;
       const delayMs = Math.pow(2, attempt - 1) * 1000; // exponential: 1s, 2s, 4s
-      logger.warn('LLM call failed, retrying', { attempt, delayMs, freebieId: input.id });
+      logger.warn('LLM call failed or timed out, retrying', { attempt, delayMs, freebieId: input.id });
       await new Promise((r) => setTimeout(r, delayMs));
     }
   }

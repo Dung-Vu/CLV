@@ -9,7 +9,7 @@ export interface AnalyzerState {
   error: string | null;
 }
 
-const state: AnalyzerState = {
+const defaultState: AnalyzerState = {
   isRunning: false,
   processed: 0,
   succeeded: 0,
@@ -20,11 +20,18 @@ const state: AnalyzerState = {
   error: null,
 };
 
+const g = global as unknown as { __analyzerState?: AnalyzerState };
+
+if (!g.__analyzerState) {
+  g.__analyzerState = { ...defaultState };
+}
+
 export function getAnalyzerState(): Readonly<AnalyzerState> {
-  return { ...state };
+  return { ...g.__analyzerState! };
 }
 
 export function setAnalyzerRunning(total: number): void {
+  const state = g.__analyzerState!;
   state.isRunning = true;
   state.processed = 0;
   state.succeeded = 0;
@@ -36,12 +43,14 @@ export function setAnalyzerRunning(total: number): void {
 }
 
 export function updateAnalyzerProgress(succeeded: number, failed: number, processed: number): void {
+  const state = g.__analyzerState!;
   state.succeeded = succeeded;
   state.failed = failed;
   state.processed = processed;
 }
 
 export function setAnalyzerDone(error?: string): void {
+  const state = g.__analyzerState!;
   state.isRunning = false;
   state.finishedAt = new Date();
   state.error = error ?? null;
